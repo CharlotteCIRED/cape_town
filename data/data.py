@@ -5,6 +5,8 @@ Created on Mon Jun 15 15:02:26 2020
 @author: Charlotte Liotta
 """
 
+from data.functions_to_import_data import *
+
 def data_polycentrisme_CAPE_TOWN(grille, param):
 
     precision = 1
@@ -17,67 +19,69 @@ def data_polycentrisme_CAPE_TOWN(grille, param):
     #Données recensement 2011
 
     #Subplace data from the Census 2011
-    importfile([path_nedum,'sub-places-dwelling-statistics.csv']);
-    data_courbe.SP_Code = SP_CODE;
-    data_courbe.income_grid = data_SP_vers_grille(Data_census_dwelling_INC_average,data_courbe,grille);
-    data_courbe.income_SP = Data_census_dwelling_INC_average;
-    data_courbe.SP_income_12_class = [Data_census_dwelling_INC_0 Data_census_dwelling_INC_1_4800	Data_census_dwelling_INC_4801_9600 Data_census_dwelling_INC_9601_19600 Data_census_dwelling_INC_19601_38200 Data_census_dwelling_INC_38201_76400 Data_census_dwelling_INC_76401_153800 Data_census_dwelling_INC_153801_307600 Data_census_dwelling_INC_307601_614400 Data_census_dwelling_INC_614001_1228800 Data_census_dwelling_INC_1228801_2457600 Data_census_dwelling_INC_2457601_more];
-    data_courbe.SP_income_n_class = zeros(length(SP_CODE),param.multiple_class);
-    for i=1:param.multiple_class:
-        data_courbe.SP_income_n_class(:,i) = sum(data_courbe.SP_income_12_class(:,param.income_distribution==i),2);
-    data_courbe.SP_X = CoordX./1000;
-    data_courbe.SP_Y = CoordY./1000;
-    data_courbe.SP_2011_distance = sqrt((data_courbe.SP_X-grille.xcentre).^2+(data_courbe.SP_Y-grille.ycentre).^2);
-    data_courbe.SP_2011_area = ALBERS_ARE; % in km2
-    data_courbe.SP_2011_CT = (MN_CODE == 199);
-    data_courbe.SP_2011_Mitchells_Plain = (MP_CODE == 199039);
+    dwellings_data = pd.read_csv('./2. Data/sub-places-dwelling-statistics.csv', sep = ';')
+    data_courbe = pd.DataFrame()
+    data_courbe_SP_Code = dwellings_data.SP_CODE
+    data_courbe_income_grid = data_SP_vers_grille(dwellings_data.Data_census_dwelling_INC_average, data_courbe, grille)
+    data_courbe_income_SP = dwellings_data.Data_census_dwelling_INC_average
+    data_courbe_SP_income_12_class = pd.DataFrame({'class1': dwellings_data.Data_census_dwelling_INC_0, 'class2':dwellings_data.Data_census_dwelling_INC_1_4800, 'class3': dwellings_data.Data_census_dwelling_INC_4801_9600, 'class4': dwellings_data.Data_census_dwelling_INC_9601_19600, 'class5': dwellings_data.Data_census_dwelling_INC_19601_38200, 'class6': dwellings_data.Data_census_dwelling_INC_38201_76400, 'class7': dwellings_data.Data_census_dwelling_INC_76401_153800, 'class8':dwellings_data.Data_census_dwelling_INC_153801_307600, 'class9':dwellings_data.Data_census_dwelling_INC_307601_614400, 'class10': dwellings_data.Data_census_dwelling_INC_614001_1228800, 'class11':dwellings_data.Data_census_dwelling_INC_1228801_2457600, 'class12': dwellings_data.Data_census_dwelling_INC_2457601_more})
+    data_courbe_SP_income_n_class = np.zeros((len(dwellings_data.SP_CODE), param["multiple_class"]))
+    
+    for i in range(0, param["multiple_class"]):
+        data_courbe_SP_income_n_class[:,i] = np.sum(data_courbe_SP_income_12_class.iloc[:,(param["income_distribution"]) - 1 == i], axis = 1)
+    data_courbe_SP_X = dwellings_data.CoordX/1000
+    data_courbe_SP_Y = dwellings_data.CoordY/1000
+    data_courbe_SP_2011_distance = np.sqrt(((data_courbe_SP_X - grille.xcentre) ** 2) + ((data_courbe_SP_Y - grille.ycentre) ** 2))
+    data_courbe_SP_2011_area = dwellings_data.ALBERS_ARE #in km2
+    data_courbe_SP_2011_CT = (dwellings_data.MN_CODE == 199)
+    data_courbe_SP_2011_Mitchells_Plain = (dwellings_data.MP_CODE == 199039)
 
-    middle_class = floor(param.multiple_class./2);
-    poor = param.income_distribution <= middle_class;
-    rich = param.income_distribution > middle_class;
+    middle_class = math.floor(param["multiple_class"] / 2)
+    poor = (param["income_distribution"] <= middle_class)
+    rich = (param["income_distribution"] > middle_class)
 
-    data_courbe.nb_poor_grid = data_SP_vers_grille_alternative(sum(data_courbe.SP_income_12_class(:,poor),2),data_courbe,grille);
-    data_courbe.nb_rich_grid = data_SP_vers_grille_alternative(sum(data_courbe.SP_income_12_class(:,rich),2),data_courbe,grille);
-    data_courbe.Mitchells_Plain = data_SP_vers_grille_alternative(data_courbe.SP_2011_Mitchells_Plain,data_courbe,grille) > 0;
-
+    data_courbe_nb_poor_grid = data_SP_vers_grille_alternative(np.sum(data_courbe_SP_income_12_class.iloc[:, poor], axis = 1), data_courbe, grille)
+    data_courbe_nb_rich_grid = data_SP_vers_grille_alternative(np.sum(data_courbe_SP_income_12_class.iloc[:, rich], axis = 1), data_courbe, grille)
+    data_courbe_Mitchells_Plain = (data_SP_vers_grille_alternative(data_courbe_SP_2011_Mitchells_Plain, data_courbe, grille) > 0)
 
     #Data on the income distribution
-    importfile([path_nedum,'Income_distribution_2011.txt']);
-    data_courbe.INC_med = INC_med;
-    for j = 1:param.multiple_class:
-        data_courbe.limit(j) = max(INC_max(param.income_distribution==j)); 
+    income_distrib = pd.read_csv('./2. Data/Income_distribution_2011.csv', sep=",")
+    data_courbe_INC_med = income_distrib.INC_med
+    data_courbe_limit = np.zeros(param["multiple_class"])
+    for j in range(0, param["multiple_class"]):
+        data_courbe_limit[j] = np.max(income_distrib.INC_max.iloc[param["income_distribution"] == j])
 
     #Type de logement
-    data_type = [Data_census_dwelling_House_concrete_block_structure Data_census_dwelling_Traditional_dwelling Data_census_dwelling_Flat_apartment Data_census_dwelling_Cluster_house	Data_census_dwelling_Townhouse Data_census_dwelling_Semi_detached_house Data_census_dwelling_House_flat_room_in_backyard Data_census_dwelling_Informal_dwelling_in_backyard	Data_census_dwelling_Informal_dwelling_settlement Data_census_dwelling_Room_flatlet_on_property_or_larger_dw Data_census_dwelling_Caravan_tent Data_census_dwelling_Other Data_census_dwelling_Unspecified Data_census_dwelling_Not_applicable];
-    data_courbe.SP_total_dwellings = sum(data_type,2);
-    data_courbe.SP_informal_backyard = data_type(:,8);
-    data_courbe.SP_informal_settlement = data_type(:,9);
-    data_courbe.SP_informal_backyard(isnan(data_courbe.SP_informal_backyard)) = 0;
-    data_courbe.SP_informal_settlement(isnan(data_courbe.SP_informal_settlement)) = 0;
-    data_courbe.informal_backyard_grid = data_SP_vers_grille_alternative(data_courbe.SP_informal_backyard,data_courbe,grille);
-    data_courbe.informal_settlement_grid = data_SP_vers_grille_alternative(data_courbe.SP_informal_settlement,data_courbe,grille);
-    data_courbe.formal_grid = data_SP_vers_grille_alternative(data_courbe.SP_total_dwellings - data_courbe.SP_informal_settlement - data_courbe.SP_informal_backyard,data_courbe,grille);
+    data_type = pd.DataFrame({'col1': dwellings_data.Data_census_dwelling_House_concrete_block_structure, 'col2': dwellings_data.Data_census_dwelling_Traditional_dwelling, 'col3': dwellings_data.Data_census_dwelling_Flat_apartment, 'col4': dwellings_data.Data_census_dwelling_Cluster_house, 'col5': dwellings_data.Data_census_dwelling_Townhouse, 'col6': dwellings_data.Data_census_dwelling_Semi_detached_house, 'col7': dwellings_data.Data_census_dwelling_House_flat_room_in_backyard, 'col8': dwellings_data.Data_census_dwelling_Informal_dwelling_in_backyard, 'col9': dwellings_data.Data_census_dwelling_Informal_dwelling_settlement, 'col10': dwellings_data.Data_census_dwelling_Room_flatlet_on_property_or_larger_dw, 'col11': dwellings_data.Data_census_dwelling_Caravan_tent, 'col12': dwellings_data.Data_census_dwelling_Other, 'col13': dwellings_data.Data_census_dwelling_Unspecified, 'col14': dwellings_data.Data_census_dwelling_Not_applicable})
+    data_courbe_SP_total_dwellings = np.sum(data_type, axis = 1)
+    data_courbe_SP_informal_backyard = data_type.iloc[:, 8]
+    data_courbe_SP_informal_settlement = data_type.iloc[:, 9]
+    data_courbe_SP_informal_backyard[np.isnan(data_courbe_SP_informal_backyard)] = 0
+    data_courbe_SP_informal_settlement[np.isnan(data_courbe_SP_informal_settlement)] = 0
+    data_courbe_informal_backyard_grid = data_SP_vers_grille_alternative(data_courbe_SP_informal_backyard, data_courbe, grille)
+    data_courbe_informal_settlement_grid = data_SP_vers_grille_alternative(data_courbe_SP_informal_settlement, data_courbe, grille)
+    data_courbe_formal_grid = data_SP_vers_grille_alternative(data_courbe_SP_total_dwellings - data_courbe_SP_informal_settlement - data_courbe_SP_informal_backyard, data_courbe, grille)
 
     #Données densité pop 2001
-    importfile([path_nedum,'Census_2001_income.csv'])
-    data_courbe.SP_2001_X = X_2001./1000;
-    data_courbe.SP_2001_Y = Y_2001./1000;
-    data_courbe.SP_2001_Code = SP_CODE;
-    data_courbe.SP_2001_dist = sqrt((data_courbe.SP_2001_X-grille.xcentre).^2+(data_courbe.SP_2001_Y-grille.ycentre).^2);
-    data_courbe.SP_2001_area = Area_sqm./1000000; %in km2
+    income_2001 = pd.read_csv('./2. Data/Census_2001_income.csv', sep = ";")
+    data_courbe_SP_2001_X = income_2001.X_2001 / 1000
+    data_courbe_SP_2001_Y = income_2001.Y_2001 / 1000
+    data_courbe_SP_2001_Code = income_2001.SP_CODE
+    data_courbe_SP_2001_dist = np.sqrt(((data_courbe_SP_2001_X - grille.xcentre) ** 2) + ((data_courbe_SP_2001_Y - grille.ycentre) ** 2))
+    data_courbe_SP_2001_area = income_2001.Area_sqm / 1000000 #in km2
 
     #Income Classes
-    data_courbe.SP_2001_12_class = [Census_2001_inc_No_income Census_2001_inc_R1_4800 Census_2001_inc_R4801_9600 Census_2001_inc_R9601_19200 Census_2001_inc_R19201_38400 Census_2001_inc_R38401_76800 Census_2001_inc_R76801_153600 Census_2001_inc_R153601_307200 Census_2001_inc_R307201_614400 Census_2001_inc_R614401_1228800 Census_2001_inc_R1228801_2457600 Census_2001_inc_R2457601_more];
-    for i=1:param.multiple_class:
-        data_courbe.SP_2001_income_n_class(:,i) = sum(data_courbe.SP_2001_12_class(:,param.income_distribution==i),2);
+    data_courbe_SP_2001_12_class = pd.DataFrame({'col1': income_2001.Census_2001_inc_No_income, 'col2': income_2001.Census_2001_inc_R1_4800, 'col3': income_2001.Census_2001_inc_R4801_9600, 'col4': income_2001.Census_2001_inc_R9601_19200, 'col5': income_2001.Census_2001_inc_R19201_38400, 'col6': income_2001.Census_2001_inc_R38401_76800, 'col7': income_2001.Census_2001_inc_R76801_153600, 'col8': income_2001.Census_2001_inc_R153601_307200, 'col9': income_2001.Census_2001_inc_R307201_614400, 'col10': income_2001.Census_2001_inc_R614401_1228800, 'col11': income_2001.Census_2001_inc_R1228801_2457600, 'col12': income_2001.Census_2001_inc_R2457601_more})
+    for i in range(0, param["multiple_class"]):
+        data_courbe_SP_2001_income_n_class[:,i] = np.sum(data_courbe.SP_2001_12_class.iloc[:,(param["income_distribution"]) - 1 == i], axis = 1)
 
     #Density of people
-    data_courbe.SP_2001_nb_poor = sum(data_courbe.SP_2001_12_class(:,poor),2);
-    data_courbe.SP_2001_nb_rich = sum(data_courbe.SP_2001_12_class(:,rich),2); %We keep the same categories than for 2011 (is it relevant?)
+    data_courbe_SP_2001_nb_poor = np.sum(data_courbe_SP_2001_12_class.iloc[:, poor], axis = 1)
+    data_courbe_SP_2001_nb_rich = np.sum(data_courbe_SP_2001_12_class[:, rich], axis = 1) #We keep the same categories than for 2011 (is it relevant?)
     
-    data_courbe.SP_2001_CT = (data_courbe.SP_2001_Code > 17000000) & (data_courbe.SP_2001_Code < 18000000);
+    data_courbe_SP_2001_CT = (data_courbe_SP_2001_Code > 17000000) & (data_courbe_SP_2001_Code < 18000000)
 
-    data_courbe.people_2001_grid = data_SP_2001_vers_grille_alternative(data_courbe.SP_2001_nb_poor + data_courbe.SP_2001_nb_rich, data_courbe, grille);
+    data_courbe_people_2001_grid = data_SP_2001_vers_grille_alternative(data_courbe_SP_2001_nb_poor + data_courbe_SP_2001_nb_rich, data_courbe, grille)
 
     #Dwelling types
     importfile([path_nedum,'Census_2001_dwelling_type.csv'])

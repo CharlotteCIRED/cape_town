@@ -5,22 +5,6 @@ Created on Wed Jun 17 11:08:34 2020
 @author: Charlotte Liotta
 """
 
-def data_SP_vers_grille_alternative(data_SP, data_courbe, grille)
-    #pour des variables extensives
-
-    importfile([path_nedum,'grid_SP_intersect.csv'])
-
-    data_grille=zeros(1,length(grille.dist));
-
-    for index=1:length(grille.dist):
-        ici=unique(SP_CODE(ID_grille==grille.ID(index)));
-       
-        for i=1:length(ici)
-            if ~isempty(data_SP(data_courbe.SP_Code==ici(i)))
-                data_grille(index)=data_grille(index)+sum(Area(ID_grille==grille.ID(index) & SP_CODE==ici(i)))...
-                *data_SP(data_courbe.SP_Code==ici(i))/sum(Area(SP_CODE==ici(i)));
-    return data_grille
-
 def import_data_SAL_landuse(grille):
     importfile([path_nedum,'SAL_EA_inters_data_landuse.csv'])
 
@@ -74,8 +58,7 @@ def data_CensusSAL_vers_grille(data_SAL, data_courbe, grille):
     importfile([path_nedum,'grid_SAL_intersect.csv'])
     data_grille=zeros(1,length(grille.dist));
 
-    for index=1:length(grille.dist),
-    
+    for index=1:length(grille.dist),  
         ici=unique(OBJECTID_1(ID_grille==grille.ID(index)));
         if isempty(ici)
             data_grille(index)=NaN;
@@ -92,36 +75,48 @@ def data_CensusSAL_vers_grille(data_SAL, data_courbe, grille):
                 data_grille(index)=data_grille(index)/(sum(Area_inter(ID_grille==grille.ID(index))));
     return data_grille
 
-def data_SP_vers_grille_alternative(data_SP, data_courbe, grille):
-    #pour des variables extensives
-    importfile([path_nedum,'grid_SP_intersect.csv'])
-
-    data_grille=zeros(1,length(grille.dist));
-
-    for index=1:length(grille.dist),
-    
-        ici=unique(SP_CODE(ID_grille == grille.ID(index)));
-       
-        for i=1:length(ici)
-            if ~isempty(data_SP(data_courbe.SP_Code==ici(i)))
-                data_grille(index)=data_grille(index)+sum(Area(ID_grille==grille.ID(index) & SP_CODE==ici(i)))...
-                *data_SP(data_courbe.SP_Code==ici(i))/sum(Area(SP_CODE==ici(i)));
+def data_SP_vers_grille(data_SP, data_courbe, grille):  
+    grid_intersect = pd.read_csv('./2. Data/grid_SP_intersect.csv', sep = ';')   
+    data_grille = np.zeros(len(grille.dist))   
+    for index in range(0, len(grille.dist)):       
+        ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])
+        area_exclu = 0       
+        for i in range(0, len(ici)):     
+            if len(data_SP[data_courbe.SP_Code == ici[i]]) == 0:                      
+                area_exclu = area_exclu + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])])
+            else:
+                data_grille[index] = data_grille[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe.SP_Code == ici[i]]       
+        if area_exclu > 0.9 * sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]):
+            data_grille[index] = np.nan           
+        else:
+            data_grille[index] = data_grille[index] / (sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]) - area_exclu)
+        print(index)
+        
     return data_grille
+
+def data_SP_vers_grille_alternative(data_SP, data_courbe, grille):
+    
+    grid_intersect = pd.read_csv('./2. Data/grid_SP_intersect.csv', sep = ';')  
+    data_grille = np.zeros(len(grille.dist))   
+    for index in range(0, len(grille.dist)): 
+        ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])
+        for i in range(0, len(ici)): 
+            if len(data_SP[data_courbe.SP_Code == ici[i]]) != 0:  
+                data_grille[index] = data_grille[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe.SP_Code == ici[i]] / sum(grid_intersect.Area[grid_intersect.SP_CODE == ici[i]])
+
+    return data_grille
+
+
 
 def data_SP_2001_vers_grille_alternative(data_SP, data_courbe, grille):
     #pour des variables extensives
-    importfile([path_nedum,'grid_SP2001_intersect.csv'])
-
-    data_grille = zeros(1,length(grille.dist));
-
-    for index=1:length(grille.dist),
-    
-        ici=unique(SP_CODE(ID_grille == grille.ID(index)));
-       
-        for i=1:length(ici)
-            if ~isempty(data_SP(data_courbe.SP_2001_Code==ici(i)))
-                data_grille(index) = data_grille(index) + sum(area_intersection(ID_grille==grille.ID(index) & SP_CODE==ici(i)))...
-                *data_SP(data_courbe.SP_2001_Code == ici(i)) / sum(area_intersection(SP_CODE==ici(i)));
+    grid_intersect = pd.read_csv('./2. Data/grid_SP2001_intersect.csv', sep = ';') 
+    data_grille = np.zeros(len(grille.dist)) 
+    for index in range(0, len(grille.dist)):
+        ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])     
+        for i in range(0, len(ici)): 
+            if len(data_SP[data_courbe.SP_2001_Code == ici[i]]) != 0:
+                data_grille[index] = data_grille[index] + sum(grid_intersect.area_intersection[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe_SP_2001_Code == ici[i]] / sum(grid_intersect.area_intersection[grid_intersect.SP_CODE == ici[i]])
     return data_grille
 
 def moyenne(entree, nombre):

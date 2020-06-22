@@ -27,18 +27,18 @@ class SimulGrid:
     def create_grid(self):
         """Create a n*n grid with center in 0"""
         
-        grid = pd.read_csv('grid_decoupee_500.csv')
+        grid = pd.read_csv('./2. Data/grid_NEDUM_Cape_Town_500.csv', sep = ';')
 
         #Coordonnées réelle en South African CRS : CAPE_NO_19 en km.
-        coord_horiz = X/1000
-        coord_vert = Y/1000
+        coord_horiz = grid.X/1000
+        coord_vert = grid.Y/1000
         xcentre = -53267.944572790904/1000
         ycentre = -3754855.1309322729/1000
 
         #Distance de chacun des noeuds au centre-ville
         dist = (((coord_horiz - xcentre) ** 2) + ((coord_vert - ycentre) ** 2)) ** 0.5
         
-        self.ID = ID
+        self.ID = grid.ID
         self.coord_horiz = coord_horiz
         self.coord_vert = coord_vert
         self.xcentre = xcentre

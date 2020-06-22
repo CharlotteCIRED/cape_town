@@ -46,9 +46,9 @@ print("\n*** Load data ***\n")
 t = [0, 1, 2, 3, 4, 5, 6] #to go up to 2017
 grid = SimulGrid()
 grid.create_grid()
+data_courbe, param = data_polycentrisme_CAPE_TOWN(grid, param)
 land = import_coeff_land_CAPE_TOWN2(grid, option2, param, data_courbe)
 macro_data = import_macro_data(param,options,t)
-data_courbe, param = data_polycentrisme_CAPE_TOWN(grid, param)
 
 #Income groups in monocentric
 option2 = copy.deepcopy(option)
