@@ -5,6 +5,8 @@ Created on Mon Jun 15 14:29:16 2020
 @author: Charlotte Liotta
 """
 
+import numpy as np
+
 def choice_param():
     
     #Year of the calibration and simulation
@@ -69,7 +71,7 @@ def choice_param():
 
     #Multiple income classes
     param["multiple_class"] = 4
-    param["income_distribution"] = [0, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4]
+    param["income_distribution"] = np.array([0, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4])
 
     #Households size for transport cost
     param["taille_menage_transport"] = [1.14, 1.94, 1.94, 1.94]

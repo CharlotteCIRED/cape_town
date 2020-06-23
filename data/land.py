@@ -16,11 +16,11 @@ def import_coeff_land_CAPE_TOWN2(grille, option, param, data_courbe):
     area_pixel = (0.5 ** 2) * 1000000
 
     #Land Cover Data from our estimation (see R code for details)
-    grid = pd.read_csv('grid_decoupee_500.csv')
-    land.urbanise = np.transpose(urban)/area_pixel
-    land.informal = np.transpose(informal)/area_pixel
-    land.coeff_land_no_urban_edge = (np.transpose(unconstrained_out) + np.transpose(unconstrained_UE))/area_pixel
-    land.coeff_land_urban_edge = np.transpose(unconstrained_UE)/area_pixel
+    grid = pd.read_csv('./2. Data/grid_NEDUM_Cape_Town_500.csv', sep = ';')
+    land.urbanise = np.transpose(grid.urban)/area_pixel
+    land.informal = np.transpose(grid.informal)/area_pixel
+    land.coeff_land_no_urban_edge = (np.transpose(grid.unconstrained_out) + np.transpose(grid.unconstrained_UE))/area_pixel
+    land.coeff_land_urban_edge = np.transpose(grid.unconstrained_UE)/area_pixel
  
     #Here we estimate the number of RDP/BNG dwellings and the area available
     #for backyarding in each subplace using GV2012 data
@@ -86,4 +86,14 @@ def import_coeff_land_CAPE_TOWN2(grille, option, param, data_courbe):
     land.housing_limite = param["taille_limite1"] * 1000000 * interieur + param["taille_limite2"] * 1000000 * exterieur
     land.housing_limite_politique = land.housing_limite
 
-    return land
+    #Construction 
+    param["housing_in"] = data_courbe_DENS_HFA_formal_grid / land.coeff_land[1,:] * 1.1
+    param["housing_in"][~np.isfinite(param["housing_in"])] = 0
+    param["housing_in"][param["housing_in"] > 2 * (10**6)] = 2 * (10**6)
+    param["housing_in"][param["housing_in"] < 0] = 0
+
+    param["housing_mini"] = np.zeros(len(grille.dist))
+    param["housing_mini"][data_courbe.Mitchells_Plain] = data_courbe_DENS_HFA_formal_grid[data_courbe_Mitchells_Plain] / land.coeff_land[1, data_courbe_Mitchells_Plain]
+    param["housing_mini"][land.coeff_land[1,:] < 0.1 | np.isnan(param["housing_mini"])] = 0
+    
+    return land, param
