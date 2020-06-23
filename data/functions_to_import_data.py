@@ -67,13 +67,10 @@ def data_CensusSAL_vers_grille(data_SAL, data_courbe_SAL_Code_conversion, grille
                 data_grille[index] = data_grille[index] / (sum(grid_intersect.Area_inter[grid_intersect.ID_grille == grille.ID[index]]))
     return data_grille
 
-
 def import_data_SAL_landuse(grille):
-    importfile([path_nedum,'SAL_EA_inters_data_landuse.csv'])
-
-    urb = Collective_living_quarters+Formal_residential+Informal_residential;
-    non_urb = Commercial+Farms+Industrial+Informal_residential+Parks_and_recreation+Small_Holdings+Vacant;
-
+    sal_ea_inters = pd.read_csv('./2. Data/SAL_EA_inters_data_landuse.csv', sep = ';') 
+    urb = sal_ea_inters.Collective_living_quarters + sal_ea_inters.Formal_residential + sal_ea_inters.Informal_residential
+    non_urb = sal_ea_inters.Commercial + sal_ea_inters.Farms + sal_ea_inters.Industrial + sal_ea_inters.Informal_residential + sal_ea_inters.Parks_and_recreation + sal_ea_inters.Small_Holdings + sal_ea_inters.Vacant
     return urb /(urb+non_urb)
 
 def data_TAZ_vers_grille(data_TAZ, data_courbe, grille):

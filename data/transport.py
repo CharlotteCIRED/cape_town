@@ -8,6 +8,8 @@ Created on Mon Jun 15 16:15:09 2020
 import numpy as np
 import pandas as pd
 from data.functions_to_import_data import *
+import numpy.matlib
+from scipy.interpolate import griddata
 
 def charges_temps_polycentrique_CAPE_TOWN_3(option,grille,macro,param,poly,t_trafic):
     """ Compute travel times and costs """
@@ -19,7 +21,7 @@ def charges_temps_polycentrique_CAPE_TOWN_3(option,grille,macro,param,poly,t_tra
     complement_trajet_pieds = 0
     complement_trajet_TC = 0
 
-    trans.nbre_modes = 5
+    trans_nbre_modes = 5
 
     #Modèle métro
     distance_metro_2, duration_metro_2 = import_donnees_metro_poly(poly, grille, param)
@@ -206,40 +208,40 @@ def charges_temps_polycentrique_CAPE_TOWN_3(option,grille,macro,param,poly,t_tra
 def import_donnees_metro_poly(poly, grille,param):
     """ import and estimate transport time by the metro """
     
-    metro_station = pd.read_csv('metro_station_poly.csv')
+    metro_station = pd.read_csv('./2. Data/metro_station_poly.csv', sep = ';')
     
-    station_line_time = ["Bellvill1_B", "Bellvill2_M", "Bellvill3_S", "Bonteheuwel1_C", "Bonteheuwel2_B", "Bonteheuwel3_K", "Capeflats", "Malmesbury", "Simonstown", "Worcester"]
+    station_line_time = np.array(["Bellvill1_B", "Bellvill2_M", "Bellvill3_S", "Bonteheuwel1_C", "Bonteheuwel2_B", "Bonteheuwel3_K", "Capeflats", "Malmesbury", "Simonstown", "Worcester"])
 
-    duration = np.zeros(len(ID_station))
+    duration = np.zeros(len(metro_station.ID_station))
     
     for i in range (0, len(ID_station)): #matrice des temps O-D entre les stations de m?tro
         for j in range(0, i):
             if (i == j):
-                duration(i,j)=0
+                duration[i, j] = 0
             elif sum(station_line_time[i,:] * station_line_time[j,:]) > 0: #pas besoin de faire de changement
-                temps = np.abs(station_line_time(j, station_line_time[i,:] * station_line_time[j,:] > 0) - station_line_time(i,station_line_time(i,:) * station_line_time(j,:)>0))
-                duration(i,j) = min(temps) + param.metro_waiting_time
-                duration(j,i) = duration(i,j)
+                temps = np.abs(station_line_time[j, station_line_time[i,:] * station_line_time[j,:] > 0] - station_line_time[i, station_line_time[i,:] * station_line_time[j,:]>0])
+                duration[i,j] = np.amin(temps) + param["metro_waiting_time"]
+                duration[j,i] = duration[i,j]
             else: #il faut faire un changement
-                line_i = station_line_time(i,:) > 0
-                line_j = station_line_time(j,:) > 0
-                noeud = false(length(ID_station),1)
-                for k = 1:length(ID_station):
-                    if (sum(station_line_time(k,:) * station_line_time(i,:)) > 0) & (sum(station_line_time(k,:) * station_line_time(j,:)) > 0):
-                        noeud(k) = true
-                temps1 = (np.abs(np.matlib.repmat(station_line_time(j, line_j > 0), sum(noeud), 1) - station_line_time(noeud, line_j > 0)))
-                temps2 = (np.abs(np.matlib.repmat(station_line_time(i, line_i > 0), sum(noeud), 1) - station_line_time(noeud, line_i > 0)))
-                duration(i,j) = min(min(temps1,[],2) + min(temps2,[],2))
-                duration(i,j) = duration(i,j) + 2 * param["metro_waiting_time"]
-                duration(j,i) = duration(i,j)
+                line_i = station_line_time[i,:] > 0
+                line_j = station_line_time[j,:] > 0
+                noeud = np.zeros((len(ID_station),1), 'bool')
+                for k in range(0, len(ID_station)):
+                    if (sum(station_line_time[k,:] * station_line_time[i,:]) > 0) & (sum(station_line_time[k,:] * station_line_time[j,:]) > 0):
+                        noeud[k] = np.ones(1, 'bool')
+                temps1 = (np.abs(numpy.matlib.repmat(station_line_time[j, line_j > 0], sum(noeud), 1) - station_line_time[noeud, line_j > 0]))
+                temps2 = (np.abs(numpy.matlib.repmat(station_line_time[i, line_i > 0], sum(noeud), 1) - station_line_time[noeud, line_i > 0]))
+                duration[i,j] = np.amin(np.amin(temps1, axis = 2) + np.amin(temps2, axis = 2))
+                duration[i,j] = duration[i,j] + 2 * param["metro_waiting_time"]
+                duration[j,i] = duration[i,j]
 
     #pour chaque point de grille la station la plus proche, et distance
-    ID_station_grille = griddata(X_cape / 1000, Y_cape / 1000, ID_station, grille.coord_horiz, grille.coord_vert, 'nearest')
-    distance_grille = np.zeros(len(grille.coord_horiz), 1)
+    ID_station_grille = griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), metro_station.ID_station, (grille.coord_horiz, grille.coord_vert), method = 'nearest')
+    distance_grille = np.zeros((len(grille.coord_horiz), 1))
 
     #Pour chaque centre d'emploi la station la plus proche, et distance
-    ID_station_center = griddata(X_cape / 1000, Y_cape / 1000, ID_station, poly.Jx, poly.Jy,'nearest')
-    distance_center = np.zeros(len(poly.Jx), 1)
+    ID_station_center = griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), metro_station.ID_station, (poly.Jx, poly.Jy), method = 'nearest')
+    distance_center = np.zeros((len(poly.Jx), 1))
     for i in range(0, len(poly.Jx)):
         distance_center(i) = np.sqrt((poly.Jx(i) - X_cape(ID_station_center(i)) / 1000) ** 2 + (poly.Jy(i) - Y_cape(ID_station_center(i)) / 1000) ** 2)
 

@@ -278,7 +278,7 @@ class ImportDataCourbe:
         self.SP_floor_factor = data_courbe_SP_floor_factor
         self.SP_share_urbanised = data_courbe_SP_share_urbanised
         self.SP_dwelling_size = data_courbe_SP_dwelling_size       
-        self.GC_count_RDP = data_courbe_GV_count_RDP
+        self.GV_count_RDP = data_courbe_GV_count_RDP
         self.GV_area_RDP = data_courbe_GV_area_RDP
         self.household_size_group = data_courbe_household_size_group
 

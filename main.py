@@ -43,24 +43,16 @@ option = choice_options()
 print("\n*** Load data ***\n")
 
 #Grid, land-use constraints and macro data
-t = [0, 1, 2, 3, 4, 5, 6] #to go up to 2017
+t = np.array([0, 1, 2, 3, 4, 5, 6]) #to go up to 2017
 grid = SimulGrid()
 grid.create_grid()
 data_courbe = ImportDataCourbe()
 data_courbe.import_data(grid, param)
 land = Land()
 land.import_coeff_land_CAPE_TOWN2(grid, option, param, data_courbe)
-
-#Construction 
-param["housing_in"] = data_courbe_DENS_HFA_formal_grid / land.coeff_land[1,:] * 1.1
-param["housing_in"][~np.isfinite(param["housing_in"])] = 0
-param["housing_in"][param["housing_in"] > 2 * (10**6)] = 2 * (10**6)
-param["housing_in"][param["housing_in"] < 0] = 0
-param["housing_mini"] = np.zeros(len(grille.dist))
-param["housing_mini"][data_courbe.Mitchells_Plain] = data_courbe_DENS_HFA_formal_grid[data_courbe_Mitchells_Plain] / land.coeff_land[1, data_courbe_Mitchells_Plain]
-param["housing_mini"][land.coeff_land[1,:] < 0.1 | np.isnan(param["housing_mini"])] = 0
-    
-macro_data = import_macro_data(param, options, t)
+param = add_construction_parameters(param, data_courbe, land, grid)   
+macro_data = MacroData()
+macro_data.import_macro_data(param, option, t)
 
 #Income groups in monocentric
 option2 = copy.deepcopy(option)

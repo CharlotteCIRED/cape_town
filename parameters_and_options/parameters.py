@@ -93,3 +93,13 @@ def choice_param():
     print('*** Parameters imported succesfully ***')
     
     return param
+
+def add_construction_parameters(param, data_courbe, land, grille):
+    param["housing_in"] = data_courbe.DENS_HFA_formal_grid / land.coeff_land[0,:] * 1.1
+    param["housing_in"][~np.isfinite(param["housing_in"])] = 0
+    param["housing_in"][param["housing_in"] > 2 * (10**6)] = 2 * (10**6)
+    param["housing_in"][param["housing_in"] < 0] = 0
+    param["housing_mini"] = np.zeros(len(grille.dist))
+    param["housing_mini"][data_courbe.Mitchells_Plain] = data_courbe.DENS_HFA_formal_grid[data_courbe.Mitchells_Plain] / land.coeff_land[0, data_courbe.Mitchells_Plain]
+    param["housing_mini"][(land.coeff_land[0,:] < 0.1) | (np.isnan(param["housing_mini"]))] = 0
+    return param
