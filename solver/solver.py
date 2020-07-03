@@ -13,14 +13,14 @@ from pandas import pd
 from solver.compute_outputs_solver import *
 from solver.useful_functions_solver import *
 
-def NEDUM_basic_need_informal(t_ici,trans,option,land,grille,macro,param,poly,Uo_perso,housing_in):
+def NEDUM_basic_need_informal(t_ici, trans, option, land, grille, macro, param, poly, Uo_perso, housing_in):
     """ Solver with a Stone-Geary utility function, n income classes and informal housing (settlement and backyard shacks) """
 
     revenu_tmp = interp1d(poly.annee - param["year_begin"], poly.avg_inc, t_ici)
     income1 = np.zeros([len(poly.Jx),len(grille.dist),len(t_ici)])
     for index in range(0, len(t_ici)):
-        income1[:,:,index] = revenu_tmp[:,index] * np.ones(size(grille.dist))  #income for the year
-    income_avg = ppval(macro.spline_revenu,t_ici) #average income for the year of the simulation
+        income1[:,:,index] = revenu_tmp[:,index] * np.ones(grille.dist.shape)  #income for the year
+    income_avg = macro_data.spline_revenu(t_ici) #average income for the year of the simulation
     
     price_trans = prix2_polycentrique2(trans, param, t_ici) #Final price for transport
     price_trans[price_trans == 0] = np.nan
@@ -28,20 +28,20 @@ def NEDUM_basic_need_informal(t_ici,trans,option,land,grille,macro,param,poly,Uo
     price_time[price_time == 0] = np.nan
     
     #Interest rate
-    interest_rate_3_years = ppval(macro.spline_notaires, (t_ici - 5 + 1):t_ici)
+    interest_rate_3_years = macro_data.spline_notaires(np.array(list(range((t_ici - 5 + 1):t_ici))))
     interest_rate_3_years[interest_rate_3_years < 0] = np.nan
     interest_rate1 = np.nanmean(interest_rate_3_years) / 100
 
     #Population
-    population = ppval(macro.spline_population, t_ici)
-    RDP_total = ppval(macro.spline_RDP, t_ici)
+    population = macro_data.spline_population(t_ici)
+    RDP_total = macro_data.spline_RDP(t_ici)
 
     #Construction coefficient
-    construction_ici = (income_avg / macro.revenu_ref) ** (-param["coeff_b"]) * param["coeff_grandA"]
+    construction_ici = (income_avg / macro_data.revenu_ref) ** (- param["coeff_b"]) * param["coeff_grandA"]
 
     #Evolution of coeff_land
-    land_backyard = ppval(land.spline_land_backyard, t_ici)
-    land_RDP = ppval(land.spline_land_RDP, t_ici)
+    land_backyard = land.spline_land_backyard(t_ici)
+    land_RDP = land.spline_land_RDP(t_ici)
 
     coeff_land_private = (ppval(land.spline_land_constraints, t_ici) - land_backyard - land.informal - land_RDP) * land.coeff_landmax
     coeff_land_private[coeff_land_private < 0] = 0
@@ -49,7 +49,7 @@ def NEDUM_basic_need_informal(t_ici,trans,option,land,grille,macro,param,poly,Uo
     coeff_land_RDP = land_RDP
     coeff_land_settlement = land.informal * land.coeff_landmax_settlement
     land.coeff_land = [coeff_land_private, coeff_land_backyard, coeff_land_settlement, coeff_land_RDP]
-    land.RDP_houses_estimates = ppval(land.spline_estimate_RDP,t_ici)
+    land.RDP_houses_estimates = land.spline_estimate_RDP(t_ici)
 
     #Limit of housing construction
     housing_limite_ici = housing_limite_evol(land, option, param, t_ici)
@@ -61,7 +61,7 @@ def NEDUM_basic_need_informal(t_ici,trans,option,land,grille,macro,param,poly,Uo
     rent_reference = copy.deepcopy(transaction_cost_in)
 
     #Tax outside the urban edge
-    param["tax_urban_edge_mat"] = np.zeros(1, length(grille.dist))
+    param["tax_urban_edge_mat"] = np.zeros((1, len(grille.dist)))
     #if option.tax_out_urban_edge == 1
         #param.tax_urban_edge_mat(land.urban_edge == 0) = param.tax_urban_edge .* interest_rate1;
 
@@ -82,61 +82,58 @@ def compute_equilibrium_polycentrique_1_6(option, land, grille, macro, param, t_
     #Preparation of the variables
     interest_rate1 = interest_rate1 + param["depreciation_h"]
     t_temp = copy.deepcopy(t_ici)
-    param["revenu_ref"] = macro.revenu_ref
-    Jval = interp1d(poly.annee, poly.Jval(1:len(poly.annee),:), t_temp + param["year_begin"]) #employment centers
-    avg_inc = interp1d(poly.annee, poly.avg_inc(1:len(poly.annee), :), t_temp + param["year_begin"]) #income of each class
-    poly.income_mult = avg_inc / ppval(macro.spline_revenu, t_temp)
+    param["revenu_ref"] = macro_data.revenu_ref
+    Jval = interp1d(poly.annee, poly.Jval[range(0, len(poly.annee)),:], t_temp + param["year_begin"]) #employment centers
+    avg_inc = interp1d(poly.annee, poly.avg_inc[range(0, len(poly.annee)), :], t_temp + param["year_begin"]) #income of each class
+    poly.income_mult = avg_inc / macro_data.spline_revenu(t_temp)
 
     #Class of each center and housing type
     formal_temp = poly.formal
     backyard_temp = poly.backyard
     settlement_temp = poly.settlement
-    poly.formal = np.zeros(1, len(avg_inc))
-    poly.backyard = np.zeros(1, len(avg_inc))
-    poly.settlement = np.zeros(1, len(avg_inc))
-    poly.class = poly.class[1,:]
+    poly.formal = np.zeros((1, len(avg_inc)))
+    poly.backyard = np.zeros((1, len(avg_inc)))
+    poly.settlement = np.zeros((1, len(avg_inc)))
+    poly.classes = poly.classes[1,:]
 
-    for i in range(1, param["multiple_class"]):
-        if formal_temp(i) == 1
-            poly.formal[poly.class == i] = 1   
-        if backyard_temp(i) == 1
-            poly.backyard[poly.class == i] = 1
-        if settlement_temp(i) == 1
-            poly.settlement[poly.class == i] = 1
+    for i in range(0, param["multiple_class"]):
+        if formal_temp[i] == 1:
+            poly.formal[poly.classes == i] = 1   
+        if backyard_temp[i] == 1:
+            poly.backyard[poly.classes == i] = 1
+        if settlement_temp[i] == 1:
+            poly.settlement[poly.classes == i] = 1
 
     #Ajust the population to remove the population in RDP
-    ratio = population ./ sum(Jval, 2)
+    ratio = population / np.sum(Jval, axis = 2)
     Jval = Jval * ratio
     RDP_total = RDP_total * ratio
-    Jval[poly.class == 1] = Jval[poly.class == 1] - RDP_total * Jval[poly.class == 1] / sum(Jval[poly.class == 1])
+    Jval[poly.classes == 1] = Jval[poly.classes == 1] - RDP_total * Jval[poly.classes == 1] / sum(Jval[poly.classes == 1])
     Jx = poly.Jx
     Jy = poly.Jy
-    J = [Jval, Jx, Jy]
+    J = np.array([Jval, Jx, Jy])
     #J = single(J)
 
     #We define multi_proba (useful in the solver) here because it is faster
-    multi_proba = (np.transpose(J[1,:]) * np.ones(1,size(grille.dist, 2)))
+    multi_proba = (np.transpose(J[1,:]) * np.ones((1, len(grille.dist, 2))))
 
     #Commuting price for RDP households (useful for Backyarding)
     #Note: Households in RDP are allocated randomly to job centers
-    prix_tc_RDP = sum(np.transpose(Jval[poly.class == 1]) * prix_tc[poly.class == 1, :] , 1) / sum(Jval[poly.class == 1])
+    prix_tc_RDP = sum(np.transpose(Jval[poly.classes == 1]) * prix_tc[poly.classes == 1, :] , 1) / sum(Jval[poly.classes == 1])
 
     #Amenities
     amenite = land.amenite
-    amenite = np.ones(size(revenu1,1),1) * amenite #We transform amenities in a matrix with as many lines as employment centers
+    amenite = np.ones((len(revenu1, 1),1 )) * amenite #We transform amenities in a matrix with as many lines as employment centers
 
     #Useful functions
     uti = lambda Ro, revenu : utilite(Ro, revenu, param["basic_q"], param)
 
-    decomposition_rent = np.concatenate(([10 ** (-5), 10 ** (-4), 10 ** (-3), 10 ** (-2)], 
-                                         np.arange(0.02, 0.081, 0.015), 
-                                         np.arange(0.1, 1.01, 0.02)))
+    decomposition_rent = np.concatenate(([10 ** (-5), 10 ** (-4), 10 ** (-3), 10 ** (-2)], np.arange(0.02, 0.081, 0.015), np.arange(0.1, 1.01, 0.02)))
     
-    decomposition_income = np.concatenate(([10 ** (-5), 10 ** (-4), 10 ** (-3.5), 10 ** (-3), 10 ** (-2.5), 10 ** (-2), 0.03], 
-                                           np.arange(0.06, 1.01, 0.02)))
+    decomposition_income = np.concatenate(([10 ** (-5), 10 ** (-4), 10 ** (-3.5), 10 ** (-3), 10 ** (-2.5), 10 ** (-2), 0.03], np.arange(0.06, 1.01, 0.02)))
 
     choice_income = np.max(np.max(revenu1)) * decomposition_income
-    income = np.transpose(np.matlib.repmat(choice_income, len(choice_income),1))
+    income = np.transpose(np.matlib.repmat(choice_income, len(choice_income), 1))
 
     if param.basic_q == 0:
         choice_rent = 800 * 12 * decomposition_rent
@@ -149,23 +146,23 @@ def compute_equilibrium_polycentrique_1_6(option, land, grille, macro, param, t_
     YY = uti(rent, income)
     ZZ = rent
 
-    solus = lambda x, y : (griddata(XX,YY,ZZ ** param["coeff_beta"],x,y)) ** (1 / param["coeff_beta"])
+    solus = lambda x, y : (griddata(XX,YY,ZZ ** param["coeff_beta"], x, y)) ** (1 / param["coeff_beta"])
 
     #smaller grid for speed
     selected_pixels = (sum(land.coeff_land) > 0)
-    land.coeff_land = land.coeff_land[:,selected_pixels]
+    land.coeff_land = land.coeff_land[:, selected_pixels]
     grille_temp = grille
     grille.dist = grille.dist[selected_pixels]
     housing_limite_ici = housing_limite_ici[selected_pixels]
-    multi_proba = multi_proba[:,selected_pixels]
-    prix_tc = prix_tc[:,selected_pixels]
-    prix_tc_RDP = prix_tc_RDP[:,selected_pixels]
-    prix_temps = prix_temps[:,selected_pixels]
+    multi_proba = multi_proba[:, selected_pixels]
+    prix_tc = prix_tc[:, selected_pixels]
+    prix_tc_RDP = prix_tc_RDP[:, selected_pixels]
+    prix_temps = prix_temps[:, selected_pixels]
     param["housing_mini"] = param["housing_mini"][selected_pixels]
     param["housing_in"] = param["housing_in"][selected_pixels]
     #param.tax_urban_edge_mat = param.tax_urban_edge_mat[selected_pixels]
-    revenu1 = revenu1[:,selected_pixels]
-    amenite = amenite[:,selected_pixels]
+    revenu1 = revenu1[:, selected_pixels]
+    amenite = amenite[:, selected_pixels]
 
     #Estimation of the rent delta
     trans_tmp.cout_generalise = prix_tc
@@ -189,12 +186,12 @@ def compute_equilibrium_polycentrique_1_6(option, land, grille, macro, param, t_
 
     Uo = np.zeros(max_iter_t,size(J,2)) #utility for each center = key variable that will be adjusted in the solver
 
-    impossible_population = np.zeros((1, size(J,2)), dtype=bool) # = 1 if we cannot reach the objective population
+    impossible_population = np.zeros((1, size(J,2)), 'bool') # = 1 if we cannot reach the objective population
     number_impossible_mem = 0
-    condition_possible = np.ones(1, dtype = bool) #exits the solver if we cannot reach the objective population
+    condition_possible = np.ones(1, 'bool') #exits the solver if we cannot reach the objective population
 
     #Definition of Uo
-    Uo(1,:) = Uo_init
+    Uo[1, :] = Uo_init
     
     index_t = 1
     facteur_convergence_init = 0.025
@@ -286,25 +283,26 @@ while (index_t < max_iter_t) & (val_max[index_t] > precision) & condition_possib
     
         
     #deriv_U will be used to adjust the utility levels
-    deriv_U[index_t, :] = log((job_simul_total(index_t,:)+10)./(J(1,:)+10));
-    deriv_U[index_t, :] = deriv_U(index_t,:).*param.facteur_convergence;
+    deriv_U[index_t, :] = np.log((job_simul_total[index_t, :] + 10) / (J[1, :] + 10))
+    deriv_U[index_t, :] = deriv_U[index_t, :) * param["facteur_convergence"]
     deriv_U[index_t, deriv_U[index_t,:] > 0] = deriv_U[index_t, deriv_U[index_t,:] > 0] * 1.1
 
     #Variables to display
     erreur[index_t, :] = (job_simul_total[index_t, :] / Jval - 1) * 100
-    val_max[index_t, :], m = max(np.abs(job_simul_total[index_t, J[1,:] !=0] / Jval[J[1,:] != 0] - 1))
+    val_max[index_t, :] = np.max(np.abs(job_simul_total[index_t, J[1,:] !=0] / Jval[J[1,:] != 0] - 1))
+    m = np.max(np.abs(job_simul_total[index_t, J[1,:] !=0] / Jval[J[1,:] != 0] - 1))
     erreur_temp = (job_simul_total[index_t, J[1,:] !=0] / Jval[J[1,:] != 0] - 1)
     val_max_no_abs[index_t, :] = erreur_temp[m]
-    val_moy[index_t, :] = np.mean(np.abs(job_simul_total[index_t, J[1, :] != 0] / (Jval[J[1,:]!=0]+0.001) - 1))
-    nombre[index_t, :] = sum(np.abs(job_simul_total[index_t, J[1, :] != 0) / Jval[J[1,:]!=0] - 1) > precision)
+    val_moy[index_t, :] = np.mean(np.abs(job_simul_total[index_t, J[1, :] != 0] / (Jval[J[1,:] != 0] + 0.001) - 1))
+    nombre[index_t, :] = sum(np.abs(job_simul_total[index_t, J[1, :] != 0) / Jval[J[1,:] != 0] - 1) > precision)
     
     #In case, for one type of households, it is impossible to attain the
     #objective population (basic need effect)
-    if ((sum(Uo[index_t, :] < 1) > 0) & (max((job_simul_total[index_t,J[1,:] != 0) / Jval(J[1,:]!=0) - 1)) < precision))/
-        impossible_population(Uo[index_t, :] < 1) = np.ones(1, dtype = 'bool')
-    if (sum(impossible_population) + sum(np.abs(job_simul_total(index_t,J[1,:]!=0) / Jval(J[1,:]!=0)-1)<precision))>= len(poly.income_mult): #If we have to stop the solver
+    if ((sum(Uo[index_t, :] < 1) > 0) & (max((job_simul_total[index_t, J[1,:] != 0) / Jval[J[1,:] != 0] - 1)) < precision)):
+        impossible_population(Uo[index_t, :] < 1) = np.ones(1, 'bool')
+    if (sum(impossible_population) + sum(np.abs(job_simul_total(index_t, J[1,:] != 0) / Jval[J[1,:] != 0] - 1) < precision)) >= len(poly.income_mult): #If we have to stop the solver
         if sum(impossible_population) == number_impossible_mem:
-            condition_possible = np.zeros(1, dtype = 'bool') #We exit the solver
+            condition_possible = np.zeros(1, 'bool') #We exit the solver
         else:
            number_impossible_mem = sum(impossible_population) #Gives the centers for which the model could not solve
     
@@ -324,22 +322,22 @@ while (index_t < max_iter_t) & (val_max[index_t] > precision) & condition_possib
     RDP_dwelling_size = np.matlib.repmat(param.RDP_size, 1, len(grille_temp.dist));
     people_travaille_with_RDP = np.zeros(4, len(poly.income_mult), len(grille_temp.dist))
     people_travaille_with_RDP[1:3, :, selected_pixels] = people_travaille
-    people_travaille_with_RDP(4, poly.class == 1, :) = np.matlib.repmat(RDP_people, sum(poly.class == 1), 1) * np.transpose(Jval[poly.class == 1]) / sum(Jval[poly.class == 1])
+    people_travaille_with_RDP(4, poly.classes == 1, :) = np.matlib.repmat(RDP_people, sum(poly.classes == 1), 1) * np.transpose(Jval[poly.classes == 1]) / sum(Jval[poly.classes == 1])
 
     #Outputs of the solver
 
     #Employment centers
-    etat_initial.erreur = erreur[index_t,:]
-    etat_initial.job_simul[:,:] = job_simul[index_t,:,:]
+    etat_initial.erreur = erreur[index_t, :]
+    etat_initial.job_simul[:, :] = job_simul[index_t, :, :]
 
     #Number of people
-    etat_initial.people_housing_type[:,:] = sum(people_travaille_with_RDP, 2)
-    etat_initial.people_center[:,:] = sum(people_travaille_with_RDP, 1)
+    etat_initial.people_housing_type[:,:] = np.sum(people_travaille_with_RDP, axis = 2)
+    etat_initial.people_center[:,:] = np.sum(people_travaille_with_RDP, axis = 1)
     etat_initial.people1 = people_travaille_with_RDP
 
     #Housing and hous
-    housing_export = np.zeros(3, len(grille_temp.dist))
-    hous_export = np.zeros(3, len(grille_temp.dist))
+    housing_export = np.zeros((3, len(grille_temp.dist)))
+    hous_export = np.zeros((3, len(grille_temp.dist)))
     housing_export[:, selected_pixels] = housing
     hous_export[:, selected_pixels] = hous
     hous_export[hous <= 0] = np.nan
@@ -351,15 +349,15 @@ while (index_t < max_iter_t) & (val_max[index_t] > precision) & condition_possib
     rent_tmp_export = np.zeros(3, len(grille_temp.dist))
     rent_tmp_export[:, selected_pixels] = rent_tmp
     rent_tmp_export[:, selected_pixels == 0] = np.nan
-    etat_initial.rent1[:,:] = [rent_tmp_export, np.zeros(1,len(grille_temp.dist))]
-    R_mat_export = np.zeros(3, len(poly.Jx), len(grille_temp.dist))
+    etat_initial.rent1[:, :] = [rent_tmp_export, np.zeros(1, len(grille_temp.dist))]
+    R_mat_export = np.zeros((3, len(poly.Jx), len(grille_temp.dist)))
     R_mat_export[:,:,selected_pixels] = R_mat
     R_mat_export[:,:,selected_pixels == 0] = np.nan
     etat_initial.R_mat = R_mat_export
 
     #Other outputs
-    etat_initial.capital_land1 = (housing / (param["coeff_grandA"])) ** (1/param["coeff_b"]);
-    etat_initial.revenu_in = revenu1;
+    etat_initial.capital_land1 = (housing / (param["coeff_grandA"])) ** (1/param["coeff_b"])
+    etat_initial.revenu_in = revenu1
     etat_initial.limite1 = (etat_initial.people1 > 1)
     etat_initial.matrice_J = 0
     etat_initial.mult = 0

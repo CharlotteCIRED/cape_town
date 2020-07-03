@@ -16,32 +16,6 @@ def construction(param,macro,revenu):
 def transaction_cost(param,macro,revenu):
         """ On suppose que le coût de transaction évolue proportionnellement au revenu. """
         return (revenu / macro.revenu_ref) * param["transaction_cost2011"]
-def cree_ponder(valeur,vecteur):
-        vecteur_centre = vecteur - valeur
-        valeur_mini, index = np.min(np.abs(vecteur_centre))
-
-        if valeur_mini == 0:
-            index1 = index
-            index2 = index
-            ponder1 = 1
-            ponder2 = 0
-        else:
-            vecteur_neg = vecteur_centre
-            vecteur_neg[vecteur_neg > 0] = np.nan
-            rien1, index1 = np.max(vecteur_neg)  
-            vecteur_pos = vecteur_centre
-            vecteur_pos[vecteur_pos < 0] = np.nan
-            rien2, index2 = np.min(vecteur_pos)       
-            ponder1 = np.abs(rien1) / (rien2 - rien1)
-            ponder2 = 1 - ponder1
-            
-        return index1, index2, ponder1, ponder2
-    
-    def prix2_polycentrique3(t_transport,cout_generalise,param,t):
-        for index in range(0, len(t)):
-            index1, index2, ponder1, ponder2 = cree_ponder(t[index] + param["year_begin"], t_transport)
-            sortie[:,:,index] = ponder1 * cout_generalise[:,:,index1] + ponder2 * cout_generalise[:,:,index2]
-            return sortie
 
 def housing_construct(R,option,housing_limite_ici,construction_ici,param,transaction_cost_in,loyer_de_ref,interest_rate1,Profit_limite):
     """ Calculates the housing construction as a function of rents """

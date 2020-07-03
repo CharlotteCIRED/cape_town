@@ -5,6 +5,9 @@ Created on Wed Jun 17 11:08:34 2020
 @author: Charlotte Liotta
 """
 
+import pandas as pd
+import numpy as np
+
 def data_SP_vers_grille(data_SP, data_courbe_SP_Code, grille):  
     grid_intersect = pd.read_csv('./2. Data/grid_SP_intersect.csv', sep = ';')   
     data_grille = np.zeros(len(grille.dist))   
@@ -34,8 +37,6 @@ def data_SP_vers_grille_alternative(data_SP, data_courbe_SP_Code, grille):
                 data_grille[index] = data_grille[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe_SP_Code == ici[i]] / sum(grid_intersect.Area[grid_intersect.SP_CODE == ici[i]])
 
     return data_grille
-
-
 
 def data_SP_2001_vers_grille_alternative(data_SP, data_courbe_SP_2001_Code, grille):
     #pour des variables extensives
@@ -73,6 +74,38 @@ def import_data_SAL_landuse(grille):
     non_urb = sal_ea_inters.Commercial + sal_ea_inters.Farms + sal_ea_inters.Industrial + sal_ea_inters.Informal_residential + sal_ea_inters.Parks_and_recreation + sal_ea_inters.Small_Holdings + sal_ea_inters.Vacant
     return urb /(urb+non_urb)
 
+def prix2_polycentrique3(t_transport, cout_generalise, param, t):
+    for index in range(0, len(t)):
+        index1, index2, ponder1, ponder2 = cree_ponder(t[index] + param["year_begin"], t_transport)
+        sortie = np.zeros((2, 2, 2))
+        sortie[:, :, index] = (ponder1 * cout_generalise[:, :, index1]) + (ponder2 * cout_generalise[:, :, index2])    
+    return sortie
+
+def cree_ponder(valeur,vecteur):
+    vecteur_centre = vecteur - valeur
+    valeur_mini, index = min(np.abs(vecteur_centre))
+
+    if valeur_mini == 0:
+        index1 = index
+        index2 = index
+        ponder1 = 1
+        ponder2 = 0
+    else:
+        vecteur_neg = vecteur_centre
+        vecteur_neg[vecteur_neg > 0] = np.nan
+        rien1 = np.max(vecteur_neg)
+        index1 = np.argmax(vecteur_neg)
+    
+        vecteur_pos = vecteur_centre
+        vecteur_pos[vecteur_pos < 0] = np.nan
+        rien2 = np.min(vecteur_pos)
+        index2 = np.argmin(vecteur_pos)
+    
+        ponder1 = np.abs(rien1) / (rien2 - rien1)
+        ponder2 = 1 - ponder1
+    return index1, index2, ponder1, ponder2
+
+'''
 def data_TAZ_vers_grille(data_TAZ, data_courbe, grille):
     importfile([path_nedum,'grid_TAZ_intersect.csv'])
 
@@ -198,4 +231,4 @@ def griddata_hier(a,b,c,x,y):
 
     #If the extrapolated data is lower than the nearest neighboor, we take
     #the nearest neighboor
-    return max(surface_linear(x', y'), surface_nearest(x',y'))
+    return max(surface_linear(x', y'), surface_nearest(x',y')) '''

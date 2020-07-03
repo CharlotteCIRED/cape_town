@@ -13,8 +13,8 @@ from pandas import pd
 def coeur_poly2(Uo,param,option,trans_tmp,grille,transaction_cost_in,housing_limite_ici,loyer_de_ref,construction_ici,interest_rate1,revenu1,multi_proba,prix_tc,prix_tc_RDP,coeff_land_ici, coeff_landmax,poly,amenity,solus,uti,type_housing):
     """ Works both for formal or informal housing """
     
-    Ro = solus(revenu1(:,1)',Uo)
-    Ro(Ro<0) = 0
+    Ro = solus(np.transpose(revenu1[:,1]),Uo)
+    Ro[Ro < 0] = 0
 
     basic_q_formal = param["basic_q"]
     if (type_housing == 'backyard') | (type_housing == 'informal'):
@@ -45,14 +45,14 @@ def coeur_poly2(Uo,param,option,trans_tmp,grille,transaction_cost_in,housing_lim
 
     #Estimate housing
     if type_housing == 'formal':
-        hous = param["coeff_beta"] * (revenu1(quel_mat) - prix_tc(quel_mat)) / R + param["coeff_alpha"] * param["basic_q"]
+        hous = param["coeff_beta"] * (revenu1[quel_mat] - prix_tc[quel_mat]) / R + param["coeff_alpha"] * param["basic_q"]
     elif type_housing == 'backyard':
-        hous = param["size_shack"] * np.ones(size(quel_mat))
+        hous = param["size_shack"] * np.ones(quel_mat.shape)
     elif type_housing == 'informal':
-        hous = param["size_shack"] * np.ones(size(quel_mat))
+        hous = param["size_shack"] * np.ones(quel_mat.shape)
 
-    hous_formal_mat = np.ones(size(np.transpose(Ro))) * hous
-    depense_mat = np.ones(size(np.transpose(Ro))) * (hous * R)
+    hous_formal_mat = np.ones(np.transpose(Ro).shape) * hous
+    depense_mat = np.ones(np.transpose(Ro).shape) * (hous * R)
     Z = revenu1 - trans_tmp.cout_generalise - depense_mat
     Z[Z<=0] = 0
     utility = utilite_amenite(Z, hous_formal_mat, param, amenity, revenu1, 0)
@@ -60,36 +60,35 @@ def coeur_poly2(Uo,param,option,trans_tmp,grille,transaction_cost_in,housing_lim
     utility_max_mat = utility_max * np.ones(size(R))
     utility = (np.abs(utility)) ** 0.01
     utility_max_mat = (np.abs(utility_max_mat)) ** 0.01 #1000 si 0.01%2000 si 0.005;11000 si 0.001;110000 si 0.0001
-    lambda = param["lambda"] * np.ones(size(utility)) #lambda(1:20,:)=lambda(1:20,:)*0.96;%pour 0.01
-    proba_log = -(utility_max_mat / utility - 1) * lambda
+    param_lambda = param["lambda"] * np.ones(size(utility)) #lambda(1:20,:)=lambda(1:20,:)*0.96;%pour 0.01
+    proba_log = -(utility_max_mat / utility - 1) * param_lambda
     
     lieu_zero = np.isnan(proba_log)
-    proba_log(lieu_zero) = -100000
+    proba_log[lieu_zero] = -100000
 
     medi = np.max(proba_log,[],1)
-    medi[np.isnan(medi)] = 0
-    medi(np.isinf(medi)) = 0
-    medi = np.ones(size(R_mat,1),1) * medi
+    medi[np.isnan[medi]] = 0
+    medi(np.isinf[medi]) = 0
+    medi = np.ones(len(R_mat, 1), 1) * medi
     proba_log = proba_log - medi
 
     #Number of jobs
-    proba_log = proba_log+log(double(multi_proba))
+    proba_log = proba_log + np.log(multi_proba)
 
-    if sum(sum(~isreal(proba_log)))>=1:
+    if sum(sum(~isreal(proba_log))) >= 1:
         disp('nombres complexes dans proba!! pause !')
 
     #Exponential form
     proba = np.exp(proba_log)
-    proba(Z<=0) = 0
+    proba[Z <= 0] = 0
 
     proba[lieu_zero] = 0
-    proba[R_mat<=0] = 0
+    proba[R_mat <= 0] = 0
 
     #Normalization of the proba
     proba1 = sum(proba,1)
-    proba = proba / (np.ones(size(R_mat,1),1) * proba1)
-    proba(((np.ones(size(R_mat,1),1) * proba1)) == 0) = 0
-    proba = single(proba)
+    proba = proba / (np.ones(len(R_mat,1),1) * proba1)
+    proba(((np.ones(len(R_mat,1),1) * proba1)) == 0) = 0
 
     #Housing construction
     if type_housing == 'formal':
@@ -110,9 +109,9 @@ def coeur_poly2(Uo,param,option,trans_tmp,grille,transaction_cost_in,housing_lim
     people_init(np.isnan(people_init)) = 0
     people_init_vrai = people_init * coeff_land_ici * 0.5 ** 2
 
-    people_travaille = (np.ones(size(R_mat,1),1) * people_init_vrai) * proba
-    people_travaille(np.isnan(people_travaille)) = 0
-    job_simul = np.tranpose(sum(people_travaille,2))
+    people_travaille = (np.ones(len(R_mat, 1), 1) * people_init_vrai) * proba
+    people_travaille[np.isnan[people_travaille]] = 0
+    job_simul = np.tranpose(np.sum(people_travaille, axis = 2))
     
     if type_housing == 'formal':
         R = np.max(R, transaction_cost_in)

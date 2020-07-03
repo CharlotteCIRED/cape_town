@@ -57,7 +57,7 @@ class Land:
 
             construction_rdp = pd.read_csv('./2. Data/grid_new_RDP_projects.csv')
 
-            area_backyard_2025 = np.fmin(param["backyard_size"] / (param["backyard_size"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST) * param["backyard_size"] /area_pixel)
+            area_backyard_2025 = np.fmin(param["backyard_size"] / (param["backyard_size"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST) * param["backyard_size"] / area_pixel)
             area_RDP_2025 = np.fmin(param["RDP_size"] / (param["backyard_size"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST) * param["RDP_size"] / area_pixel)
             area_backyard_2040 = np.fmin(param["backyard_size_future"] / (param["backyard_size_future"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT) * param["backyard_size_future"] / area_pixel)
             area_RDP_2040 = np.fmin(param["RDP_size"] / (param["backyard_size_future"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT) * param["RDP_size"] / area_pixel)
@@ -70,7 +70,7 @@ class Land:
             self.spline_land_RDP = interp1d(year_data_informal, np.transpose([area_RDP, area_RDP, area_RDP_2025, area_RDP_2040]), method)
             self.spline_estimate_RDP = interp1d(year_data_informal, np.transpose([RDP_houses_estimates, RDP_houses_estimates, RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST) + np.transpose(construction_rdp.total_yield_DU_LT)]), method)
 
-        elif option["future_construction_RDP"] == 1:
+        elif option["future_construction_RDP"] == 0:
             #Scenario with no future construction of RDP
 
             year_data_informal = np.transpose([1990, 2040]) - param["year_begin"]

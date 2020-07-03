@@ -57,7 +57,8 @@ macro_data.import_macro_data(param, option, t)
 #Income groups in monocentric
 option2 = copy.deepcopy(option)
 option2["polycentric"] = 0
-poly = import_emploi_CAPE_TOWN2(grid, param, option2, macro_data, data_courbe, t)
+poly = ImportEmploymentData()
+poly.import_employment_data(grid, param, option2, macro_data, t)
 trans = charges_temps_polycentrique_CAPE_TOWN_3(option2,grid,macro_data,param,poly,t)
 
 #Amenities

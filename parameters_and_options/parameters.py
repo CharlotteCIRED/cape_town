@@ -29,7 +29,7 @@ def choice_param():
     param["depreciation_h"] = 0.03
     param["interest_rate1"] = 0.0250
 
-    #Transportation costs
+    #Transportation
     param["facteur_logit_min"] = 6
     param["facteur_logit"] = 3
     param["limite_temps"] = 20.2000;
@@ -37,6 +37,10 @@ def choice_param():
     param["prix_temps"] = 1
     param["prix_temps2"] = param["prix_temps"] * 0.6
     param["prix_tsport"] = 60
+    param["metro_waiting_time"] = 10
+    param["speed_walking"] = 5 #Average walking speed = 5 km/h
+    param["transaction_cost2011"] = 700
+    param["taille_menage_transport"] = [1.14, 1.94, 1.94, 1.94] #Households size
 
     #Housing limit
     param["rayon_historique"] = 20
@@ -47,35 +51,28 @@ def choice_param():
     param["time_invest_h"] = 10
     param["time_infra_km"] = 1
 
-    #Limit of the city (density)
-    param["borne"] = 30000
-
-    param["coeff_sigma"] = 1
-    param["ratio"] = 0
-    param["iter_calc_lite"] = 1
-
     #Paramètres de la résolution statique
     param["max_iter_t"] = 400
     param["precision"] = 0.025
+    
+    param["coeff_sigma"] = 1
+    param["ratio"] = 0
+    param["iter_calc_lite"] = 1
 
     #seuil du nombre d'emplois au-delà duquel on garde le centre d'emploi
     param["seuil_emplois"] = 20000
     param["pas"] = 2
 
-    param["transaction_cost2011"] = 700
-
     param["lambda"] = 1500
 
     #Land-use constraints
-    param["coeff_landmax"] = 0.7;
+    param["coeff_landmax"] = 0.7
+    param["borne"] = 30000 #Limit of the city (density)
 
     #Multiple income classes
     param["multiple_class"] = 4
     param["income_distribution"] = np.array([0, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4])
 
-    #Households size for transport cost
-    param["taille_menage_transport"] = [1.14, 1.94, 1.94, 1.94]
-    
     #Informal settlements
     param["size_shack"] = 20 #the size of a backyard shack
     param["RDP_size"] = 40 #in m2 ; the land area occupied by a RDP house
@@ -86,10 +83,6 @@ def choice_param():
     param["amenity_backyard"] = 0.38
     param["amenity_settlement"] = 0.37
     
-    #Transportation
-    param["metro_waiting_time"] = 10
-    param["speed_walking"] = 5 #Average walking speed = 5 km/h
-
     print('*** Parameters imported succesfully ***')
     
     return param
