@@ -12,12 +12,6 @@ import numpy as np
 import math
 
 class ImportDataCourbe:
-    """ Class definig a grid with:
-        - ID
-        - coord_horiz
-        - coord_vert
-        - xcentre, ycentre
-        - dist """
         
     def __init__(self):
         
@@ -25,15 +19,6 @@ class ImportDataCourbe:
         
     def import_data(self, grille, param):
         
-        precision = 1
-
-        #if option.LOAD_DATA == 0
-            #load(strcat('.', slash, 'precalculations', slash, 'data_courbe'))
-            #disp('Data loaded directly')
-            #else    
-            
-            #Données recensement 2011
-
         # %% Recensement 2011
         dwellings_data = pd.read_csv('./2. Data/sub-places-dwelling-statistics.csv', sep = ';')
         
@@ -46,7 +31,7 @@ class ImportDataCourbe:
         data_courbe_SP_2011_Mitchells_Plain = (dwellings_data.MP_CODE == 199039)
         
         #Average income
-        data_courbe_SP_Code = dwellings_data.SP_CODE #Division administrative de la ville ( 1046)
+        data_courbe_SP_Code = dwellings_data.SP_CODE #Division administrative de la ville (1046)
         data_courbe_income_grid = data_SP_vers_grille(dwellings_data.Data_census_dwelling_INC_average, data_courbe_SP_Code, grille) #Revenu moyen, désaggrégé à l'échelle de la grille (24014)
         data_courbe_income_SP = dwellings_data.Data_census_dwelling_INC_average #Revenu moyen par division administrative (SP)
         
@@ -181,7 +166,8 @@ class ImportDataCourbe:
         data_courbe_coeff_land_sal_grid = data_CensusSAL_vers_grille(data_courbe_coeff_land_sal, data_courbe_SAL_Code_conversion, grille)
         data_courbe_limit_Cape_Town = ~np.isnan(data_courbe_coeff_land_sal_grid)
     
-        # %% Density of construction at the SP level - surface for formal residential use, from EA data (Census 2011)
+        # %% Enumerator Area definition from the 2011 census - informal settlements areas
+        
         ea_data = pd.read_csv('./2. Data/EA_definition_CPT_CAPE.csv', sep = ';')
         data_courbe_SP_area_urb_from_EA = np.zeros(len(data_courbe_SP_Code))
         data_courbe_SP_formal_dens_HFA = np.zeros(len(data_courbe_SP_Code))
@@ -283,7 +269,7 @@ class ImportDataCourbe:
         self.coeff_land_sal_grid = data_courbe_coeff_land_sal_grid
         self.limit_Cape_Town = data_courbe_limit_Cape_Town 
         self.SP_area_urb_grom_EA = data_courbe_SP_area_urb_from_EA
-        self.formal_dens_HFA = data_courbe_SP_formal_dens_HFA
+        self.SP_formal_dens_HFA = data_courbe_SP_formal_dens_HFA
         self.SP_floor_factor = data_courbe_SP_floor_factor
         self.SP_share_urbanised = data_courbe_SP_share_urbanised
         self.SP_dwelling_size = data_courbe_SP_dwelling_size       

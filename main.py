@@ -42,7 +42,7 @@ option = choice_options()
 
 print("\n*** Load data ***\n")
 
-#Grid, land-use constraints and macro data
+#Grid, Population, Housing, Income, Land-use constraints, Macro data
 t = np.array([0, 1, 2, 3, 4, 5, 6]) #to go up to 2017
 grid = SimulGrid()
 grid.create_grid()
@@ -54,15 +54,15 @@ param = add_construction_parameters(param, data_courbe, land, grid)
 macro_data = MacroData()
 macro_data.import_macro_data(param, option, t)
 
-#Income groups in monocentric
+#Calibration du modèle (monocentrique)
 option2 = copy.deepcopy(option)
 option2["polycentric"] = 0
 poly = ImportEmploymentData()
 poly.import_employment_data(grid, param, option2, macro_data, t)
-trans = charges_temps_polycentrique_CAPE_TOWN_3(option2,grid,macro_data,param,poly,t)
-
-#Amenities
-amenity = amenity_calibration_parameters_v3(grid,param, macro_data, poly, option2, trans, data_courbe, land, 2011)
+trans = TransportData()
+trans.charges_temps_polycentrique_CAPE_TOWN_3(option2, grid, macro_data, param, poly, t)
+amenity = Amenity()
+amenity.amenity_calibration_parameters_v3(grid,param, macro_data, poly, option2, trans, data_courbe, land, 2011)
 land.amenite = amenity.estimated_amenities / np.mean(amenity.estimated_amenities)
 param["coeff_beta"] = amenity.coeff_beta
 param["coeff_alpha"] = 1 - param.coeff_beta
@@ -71,9 +71,11 @@ param["coeff_b"] = amenity.coeff_b
 param["coeff_a"] = 1 - amenity.coeff_b
 param["coeff_grandA"] = amenity.coeff_grandA * 1.3
 
-#Job centers and transportation data
-poly = import_emploi_CAPE_TOWN2(grid, param, option, macro_data, data_courbe, t)
-trans = charges_temps_polycentrique_CAPE_TOWN_3(option, grid, macro_data, param, poly, t) 
+#Job centers, transportation data
+poly = ImportEmploymentData()
+poly.import_employment_data(grid, param, option, macro_data, t)
+trans = TransportData()
+trans.charges_temps_polycentrique_CAPE_TOWN_3(option, grid, macro_data, param, poly, t) 
 
 # %% Initial state
 

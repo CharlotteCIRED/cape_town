@@ -24,10 +24,31 @@ def choice_param():
     #Parameters of the production fonction
     param["coeff_grandA"] = 0.69
     param["coeff_b"] = 0.55
-    param["coeff_a"] = 1-param["coeff_b"]
+    param["coeff_a"] = 1 - param["coeff_b"]
     param["delay"] = 0
     param["depreciation_h"] = 0.03
     param["interest_rate1"] = 0.0250
+    
+    #Land-use and housing constraints
+    param["coeff_landmax"] = 0.7
+    param["borne"] = 30000 #Limit of the city (density)
+    param["rayon_historique"] = 20 #Housing limit
+    param["taille_limite1"] = 0.5
+    param["taille_limite2"] = 0.5
+
+    #Multiple income classes
+    param["multiple_class"] = 4
+    param["income_distribution"] = np.array([0, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4])
+
+    #Informal settlements
+    param["size_shack"] = 20 #the size of a backyard shack
+    param["RDP_size"] = 40 #in m2 ; the land area occupied by a RDP house
+    param["backyard_size"] = 70 #in m2 ; size of the backyard of a RDP house
+    param["backyard_size_future"] = param["backyard_size"]
+    param["coeff_landmax_backyard"] = 0.45
+    param["coeff_landmax_settlement"] = 0.2
+    param["amenity_backyard"] = 0.38
+    param["amenity_settlement"] = 0.37
 
     #Transportation
     param["facteur_logit_min"] = 6
@@ -38,15 +59,10 @@ def choice_param():
     param["prix_temps2"] = param["prix_temps"] * 0.6
     param["prix_tsport"] = 60
     param["metro_waiting_time"] = 10
-    param["speed_walking"] = 5 #Average walking speed = 5 km/h
+    param["speed_walking"] = 5 #km/h
     param["transaction_cost2011"] = 700
     param["taille_menage_transport"] = [1.14, 1.94, 1.94, 1.94] #Households size
-
-    #Housing limit
-    param["rayon_historique"] = 20
-    param["taille_limite1"] = 0.5
-    param["taille_limite2"] = 0.5
-
+    
     #Param for dynamic evolution
     param["time_invest_h"] = 10
     param["time_infra_km"] = 1
@@ -64,24 +80,6 @@ def choice_param():
     param["pas"] = 2
 
     param["lambda"] = 1500
-
-    #Land-use constraints
-    param["coeff_landmax"] = 0.7
-    param["borne"] = 30000 #Limit of the city (density)
-
-    #Multiple income classes
-    param["multiple_class"] = 4
-    param["income_distribution"] = np.array([0, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4])
-
-    #Informal settlements
-    param["size_shack"] = 20 #the size of a backyard shack
-    param["RDP_size"] = 40 #in m2 ; the land area occupied by a RDP house
-    param["backyard_size"] = 70 #in m2 ; size of the backyard of a RDP house
-    param["backyard_size_future"] = param["backyard_size"]
-    param["coeff_landmax_backyard"] = 0.45
-    param["coeff_landmax_settlement"] = 0.2
-    param["amenity_backyard"] = 0.38
-    param["amenity_settlement"] = 0.37
     
     print('*** Parameters imported succesfully ***')
     

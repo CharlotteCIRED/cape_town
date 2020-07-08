@@ -19,13 +19,14 @@ class ImportEmploymentData:
     def import_employment_data(self, grille, param, option, macro_data, t):
         
         #Import data
-        TAZ = pd.read_csv('./2. Data/TAZ_amp_2013_proj_centro2.csv') #Import employment data
-        TAZ2013_centre = pd.read_csv('./2. Data/TAZ_final.csv') #Import employment center
+        TAZ = pd.read_csv('./2. Data/TAZ_amp_2013_proj_centro2.csv') #Number of jobs per Transport Zone (TZ)
+        TAZ2013_centre = pd.read_csv('./2. Data/TAZ_final.csv') #The 44 main employment centers
     
+        #Coordinates of employment centers
         listou = copy.deepcopy(TAZ2013_centre.TAZ2013_centre)
-        Xou = np.zeros(len(listou)) #Coordinates of employment centers
-        You = np.zeros(len(listou)) #Coordinates of employment centers
-        corresp = np.zeros(len(listou)) #Coordinates of employment centers
+        Xou = np.zeros(len(listou))
+        You = np.zeros(len(listou))
+        corresp = np.zeros(len(listou))
         increment = np.array([i for i in range(len(TAZ.TZ2013))])
         for index1 in range(0, len(listou)):
             Xou[index1] = TAZ.X[TAZ.TZ2013 == listou[index1]]
@@ -42,7 +43,8 @@ class ImportEmploymentData:
         YCoord = TAZ.Y
 
         #Total number of households and average income per class (12 classes)
-        year_income_distribution = param["year_begin"] + t
+        #year_income_distribution = param["year_begin"] + t
+        year_income_distribution = [x + param["year_begin"] for x in t]
         if len(t) == 1:
             total_bracket = np.transpose(np.concatenate([np.ones((1, len(t))), (macro_data.spline_pop_inc_distribution(t))]))
             avg_inc_bracket = np.transpose(np.concatenate([np.zeros((1, len(t))), (macro_data.spline_inc_distribution(t))]))
@@ -69,7 +71,7 @@ class ImportEmploymentData:
         #Duplication of employment centers for the several income groups
         for i in range(0, len(ID_centre)):
             for j in range(0, param["multiple_class"]):
-                poly_code_emploi_init[param["multiple_class"] * (i) + j] = ID_centre[i] #Vecteur avec chaque centr
+                poly_code_emploi_init[param["multiple_class"] * (i) + j] = ID_centre[i]
                 Jx[param["multiple_class"] * (i) + j] = XCoord[i] / 1000 #Coordonnées X des centres d'emploi
                 Jy[param["multiple_class"] * (i) + j] = YCoord[i] / 1000 #Coordonnées Y des centres d'emploi
                 Jval1[:, param["multiple_class"] * (i) + j] = np.transpose(numpy.matlib.repmat(sum(J_data[i, param["income_distribution"] == j]), len(year_income_distribution), 1)) #Nombre de personnes de chacune des 4 classes qui va travailler dans chaque centre d'emploi
@@ -80,7 +82,7 @@ class ImportEmploymentData:
 
         #Selection of employment centers to keep
         poly_quel = np.zeros(len(poly_code_emploi_init), 'bool')
-        if option["polycentric"] == 1:   
+        if option["polycentric"] == 1:   #On choisit manuellement 6 centres d'emploi à garder, mais on pourrait en prendre plus
             poly_quel[poly_code_emploi_init == 5101] = np.ones(1, 'bool') #CBD
             poly_quel[poly_code_emploi_init == 2002] = np.ones(1, 'bool') #Bellville
             poly_quel[poly_code_emploi_init == 1201] = np.ones(1, 'bool') #Epping
@@ -118,8 +120,8 @@ class ImportEmploymentData:
             poly_quel[j] = np.where((ID_centre_poly[j] in ID_centre_poly_remove), np.zeros(1, 'bool'), poly_quel[j])
         poly_Jx = Jx[poly_quel]
         poly_Jy = Jy[poly_quel]
-        poly_classes = classes[:,poly_quel]
-        poly_avg_inc = avg_inc[:,poly_quel]
+        poly_classes = classes[:, poly_quel]
+        poly_avg_inc = avg_inc[:, poly_quel]
 
         #Rescale to keep the correct global income distribution
         sum_class_quel = np.zeros((len(year_income_distribution), param["multiple_class"]))

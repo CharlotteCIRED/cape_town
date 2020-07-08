@@ -10,10 +10,13 @@ import copy
 from numpy import np
 from pandas import pd
 
-def coeur_poly2(Uo,param,option,trans_tmp,grille,transaction_cost_in,housing_limite_ici,loyer_de_ref,construction_ici,interest_rate1,revenu1,multi_proba,prix_tc,prix_tc_RDP,coeff_land_ici, coeff_landmax,poly,amenity,solus,uti,type_housing):
+def coeur_poly2(Uo, param, option, trans_tmp, grille, transaction_cost_in, housing_limite_ici, loyer_de_ref, 
+                construction_ici, interest_rate1, revenu1, multi_proba, prix_tc, prix_tc_RDP, coeff_land_ici, 
+                coeff_landmax, poly, amenity, solus, uti, type_housing):
+    
     """ Works both for formal or informal housing """
     
-    Ro = solus(np.transpose(revenu1[:,1]),Uo)
+    Ro = solus(np.transpose(revenu1[:,1]), Uo)
     Ro[Ro < 0] = 0
 
     basic_q_formal = param["basic_q"]
@@ -67,8 +70,8 @@ def coeur_poly2(Uo,param,option,trans_tmp,grille,transaction_cost_in,housing_lim
     proba_log[lieu_zero] = -100000
 
     medi = np.max(proba_log,[],1)
-    medi[np.isnan[medi]] = 0
-    medi(np.isinf[medi]) = 0
+    medi[np.isnan[(medi)] = 0
+    medi[np.isinf(medi)] = 0
     medi = np.ones(len(R_mat, 1), 1) * medi
     proba_log = proba_log - medi
 
@@ -97,7 +100,7 @@ def coeur_poly2(Uo,param,option,trans_tmp,grille,transaction_cost_in,housing_lim
         housing = 1000000 * housing_backyard(R, grille, param, basic_q_formal, revenu1, prix_tc_RDP)
     elif type_housing == 'informal':
         if option.double_storey_shacks == 0
-            housing = 1000000 * np.ones(size(quel_mat))
+            housing = 1000000 * np.ones(quel_mat.shape)
             housing(R == 0) = 0
         elif option.double_storey_shacks == 1
             housing = 1000000 * housing_informal(R, grille, param, poly, revenu1, prix_tc, proba)

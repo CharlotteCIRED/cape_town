@@ -7,6 +7,7 @@ Created on Wed Jun 17 11:08:34 2020
 
 import pandas as pd
 import numpy as np
+from scipy.interpolate import interp1d
 
 def data_SP_vers_grille(data_SP, data_courbe_SP_Code, grille):  
     grid_intersect = pd.read_csv('./2. Data/grid_SP_intersect.csv', sep = ';')   
@@ -20,9 +21,12 @@ def data_SP_vers_grille(data_SP, data_courbe_SP_Code, grille):
             else:
                 data_grille[index] = data_grille[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe_SP_Code == ici[i]]       
         if area_exclu > 0.9 * sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]):
-            data_grille[index] = np.nan           
+            data_grille[index] = np.nan         
         else:
-            data_grille[index] = data_grille[index] / (sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]) - area_exclu)
+            if (sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]) - area_exclu) > 0:
+                data_grille[index] = data_grille[index] / (sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]) - area_exclu)
+            else:
+               data_grille[index] = np.nan 
                 
     return data_grille
 
@@ -104,6 +108,80 @@ def cree_ponder(valeur,vecteur):
         ponder1 = np.abs(rien1) / (rien2 - rien1)
         ponder2 = 1 - ponder1
     return index1, index2, ponder1, ponder2
+
+def griddata_hier(a,b,c,x,y):
+    test = ~np.isnan(c)
+
+    #scatteredInterpolant does not extrapolate if 'none' is the second method parameter
+    #'linear' is a linear extrapolation based on the gradient at the border (can cause problem locally - decreasing transport times)
+    surface_linear = griddata(a[test], b[test], c[test], 'linear')
+    surface_nearest = griddata(a[test], b[test], c[test], 'nearest')
+
+    #If the extrapolated data is lower than the nearest neighboor, we take the nearest neighboor
+    return max(surface_linear(np.transpose(x), np.transpose(y)), surface_nearest(np.transpose(x), np.transpose(y)))
+
+def import_donnees_metro_poly(poly, grille,param):
+    """ import and estimate transport time by the metro """
+    
+    metro_station = pd.read_csv('./2. Data/metro_station_poly.csv', sep = ';')   
+    station_line_time = metro_station[["Bellvill1_B", "Bellvill2_M", "Bellvill3_S", "Bonteheuwel1_C", "Bonteheuwel2_B", "Bonteheuwel3_K", "Capeflats", "Malmesbury", "Simonstown", "Worcester"]]
+    duration = np.zeros((len(metro_station.ID_station), len(metro_station.ID_station)))
+    
+    for i in range (0, len(metro_station.ID_station)): #matrice des temps O-D entre les stations de métro
+        for j in range(0, i):
+            if (i == j):
+                duration[i, j] = 0
+            elif np.dot(station_line_time.iloc[i], station_line_time.iloc[j]) > 0: #pas besoin de faire de changement
+                temps = np.abs(station_line_time.iloc[j] - station_line_time.iloc[i])
+                temps = np.where((station_line_time.iloc[j] == 0) | (station_line_time.iloc[i] == 0), np.nan, temps)
+                duration[i,j] = np.nanmin(temps) + param["metro_waiting_time"]
+                duration[j,i] = duration[i,j]
+            else: #il faut faire un changement
+                line_i = station_line_time.iloc[i] > 0
+                line_j = station_line_time.iloc[j] > 0
+                noeud = np.zeros((len(metro_station.ID_station),1), 'bool')
+                for k in range(0, len(metro_station.ID_station)):
+                    if (sum(station_line_time.iloc[k] * station_line_time.iloc[i]) > 0) & (sum(station_line_time.iloc[k] * station_line_time.iloc[j]) > 0):
+                        noeud[k] = np.ones(1, 'bool')
+                temps1 = (np.abs(numpy.matlib.repmat(station_line_time.iloc[j][line_j].squeeze(), int(sum(noeud)), 1) - station_line_time.loc[noeud, (np.array(line_j))]))
+                temps2 = (np.abs(numpy.matlib.repmat(station_line_time.iloc[i][line_i].squeeze(), int(sum(noeud)), 1) - station_line_time.loc[noeud, (np.array(line_i))]))
+                duration[i,j] = np.amin(np.amin(temps1, axis = 1) + np.amin(temps2, axis = 1))
+                duration[i,j] = duration[i,j] + 2 * param["metro_waiting_time"]
+                duration[j,i] = duration[i,j]
+
+    #pour chaque point de grille la station la plus proche, et distance
+    ID_station_grille = griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), (metro_station.ID_station - 1), (grille.coord_horiz, grille.coord_vert), method = 'nearest')
+    distance_grille = np.zeros((len(grille.coord_horiz), 1))
+
+    #Pour chaque centre d'emploi la station la plus proche, et distance
+    ID_station_center = griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), (metro_station.ID_station - 1), (poly.Jx, poly.Jy), method = 'nearest')
+    distance_center = np.zeros((len(poly.Jx), 1))
+    for i in range(0, len(poly.Jx)):
+        distance_center[i] = np.sqrt((poly.Jx[i] - metro_station.X_cape[ID_station_center[i]] / 1000) ** 2 + (poly.Jy[i] - metro_station.Y_cape[ID_station_center[i]] / 1000) ** 2)
+
+    #calcul de la matrice des durées
+    duration_metro = np.zeros((len(grille.dist), len(poly.Jx)))
+    distance_metro = np.zeros((len(grille.dist), len(poly.Jx)))
+    for i in range(0, len(grille.coord_horiz)):
+        distance_grille[i] = np.sqrt(((grille.coord_horiz[i] - metro_station.X_cape[ID_station_grille[i]] / 1000) ** 2) + ((grille.coord_vert[i] - metro_station.Y_cape[ID_station_grille[i]] / 1000) ** 2))
+        for j in range(0, len(poly.Jx)):
+            duration_metro[i,j] = (distance_grille[i] + distance_center[j]) * 1.2 / (param["speed_walking"] / 60) + duration[ID_station_grille[i], ID_station_center[j]]
+            distance_metro[i,j] = max(np.sqrt(((grille.xcentre - metro_station.X_cape[ID_station_grille[i]] / 1000) ** 2) + (grille.ycentre - metro_station.Y_cape[ID_station_grille[i]] / 1000) ** 2), np.sqrt((grille.xcentre - metro_station.X_cape[ID_station_center[j]] / 1000) ** 2 + (grille.ycentre - metro_station.Y_cape[ID_station_center[j]] / 1000) ** 2))
+
+    duration_metro = np.transpose(duration_metro)
+    distance_metro = np.transpose(distance_metro)
+
+    return distance_metro, duration_metro
+
+def revenu2_polycentrique(macro, param, option, grille, poly, T):
+    t = np.transpose(T)
+
+    #evolution du revenu...
+    revenu_tmp = interp1d(poly.annee - param["year_begin"], poly.avg_inc, T)
+    revenu = np.zeros((len(poly.Jx), len(grille.dist), len(T)))
+    for index in range(0, len(T)):
+        revenu(:,:,index) = revenu_tmp(:,index) * np.ones((grille.dist).shape)
+    return revenu
 
 '''
 def data_TAZ_vers_grille(data_TAZ, data_courbe, grille):
