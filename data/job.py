@@ -83,6 +83,16 @@ class ImportEmploymentData:
         #Selection of employment centers to keep
         poly_quel = np.zeros(len(poly_code_emploi_init), 'bool')
         if option["polycentric"] == 1:   #On choisit manuellement 6 centres d'emploi à garder, mais on pourrait en prendre plus
+        
+            #option A: 185 employment centers
+            #for i in range(1, int(len(poly_code_emploi_init) / param["multiple_class"]) + 1):
+                #if ((Jval1[0, param["multiple_class"] * i - 1] + Jval1[0, param["multiple_class"] * i - 2] + Jval1[0, param["multiple_class"] * i - 3] + Jval1[0, param["multiple_class"] * i - 4]) > 2478):
+                    #poly_quel[param["multiple_class"] * i - 1] = np.ones(1, 'bool')
+                    #poly_quel[param["multiple_class"] * i - 2] = np.ones(1, 'bool')
+                    #poly_quel[param["multiple_class"] * i - 3] = np.ones(1, 'bool')
+                    #poly_quel[param["multiple_class"] * i - 4] = np.ones(1, 'bool')
+
+            #option B: 6 employment centers
             poly_quel[poly_code_emploi_init == 5101] = np.ones(1, 'bool') #CBD
             poly_quel[poly_code_emploi_init == 2002] = np.ones(1, 'bool') #Bellville
             poly_quel[poly_code_emploi_init == 1201] = np.ones(1, 'bool') #Epping

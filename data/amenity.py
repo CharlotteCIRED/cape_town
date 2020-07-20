@@ -13,6 +13,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from sklearn.linear_model import LinearRegression
 from sklearn import metrics
+import scipy.io
 
 class Amenity:
         
@@ -123,14 +124,15 @@ class Amenity:
         airport_cone2[amenities_sp.airport_cone == 70] = 1
         airport_cone2[amenities_sp.airport_cone == 75] = 1
     
-        dist_RDP = 2
-        if (dist_RDP != 2):
-            matrix_distance = ((repmat(grille.coord_horiz, len(data_courbe.SP_X), 1) - repmat(data_courbe.SP_X, 1, len(grille.coord_horiz))) ** 2 + (repmat(grille.coord_vert, len(data_courbe.SP_Y), 1) - repmat(data_courbe.SP_Y, 1, len(grille.coord_vert))) ** 2) < dist_RDP ** 2
-            SP_distance_RDP = np.transpose((land.RDP_houses_estimates > 5) * np.transpose(matrix_distance)) > 1
-        else:
-            load(strcat('.', slash, 'precalculations', slash, 'SP_distance_RDP'))
+        #dist_RDP = 2
+        #if (dist_RDP != 2):
+            #matrix_distance = ((repmat(grille.coord_horiz, len(data_courbe.SP_X), 1) - repmat(data_courbe.SP_X, 1, len(grille.coord_horiz))) ** 2 + (repmat(grille.coord_vert, len(data_courbe.SP_Y), 1) - repmat(data_courbe.SP_Y, 1, len(grille.coord_vert))) ** 2) < dist_RDP ** 2
+            #SP_distance_RDP = np.transpose((land.RDP_houses_estimates > 5) * np.transpose(matrix_distance)) > 1
+        #else:
+            #load(strcat('.', slash, 'precalculations', slash, 'SP_distance_RDP'))
+        sp_distance_rdp = scipy.io.loadmat('./2. Data/SPdistanceRDP.mat')
 
-        table_regression = pd.DataFrame(data= np.transpose([np.transpose(residual_reg), amenities_sp.distance_distr_parks < 2, amenities_sp.distance_ocean < 2, amenities_sp.distance_world_herit < 2, amenities_sp.distance_urban_herit < 2, amenities_sp.distance_UCT < 2, airport_cone2, np.log(1 + amenities_sp.slope), amenities_sp.distance_train < 2, amenities_sp.distance_protected_envir < 2, np.log(1 + SP_distance_RDP), amenities_sp.distance_power_station < 2]))
+        table_regression = pd.DataFrame(data= np.transpose([np.transpose(residual_reg), amenities_sp.distance_distr_parks < 2, amenities_sp.distance_ocean < 2, amenities_sp.distance_world_herit < 2, amenities_sp.distance_urban_herit < 2, amenities_sp.distance_UCT < 2, airport_cone2, np.log(1 + amenities_sp.slope), amenities_sp.distance_train < 2, amenities_sp.distance_protected_envir < 2, np.log(1 + sp_distance_rdp["SP_distance_RDP"]).squeeze(), amenities_sp.distance_power_station < 2]))
         table_reg = table_regression[quel, :]
         table_reg.columns = ['residu', 'distance_distr_parks', 'distance_ocean', 'distance_world_herit', 'distance_urban_herit', 'distance_UCT', 'airport_cone2', 'slope', 'distance_train', 'distance_protected_envir', 'RDP_proximity', 'distance_power_station']
         model_spec = 'residu ~ distance_distr_parks + distance_ocean + distance_urban_herit + airport_cone2 + slope + distance_protected_envir + RDP_proximity' #+ distance_power_station'
@@ -138,7 +140,8 @@ class Amenity:
         model_amenity = lm.fit(table_reg, model_spec) #Allows to find the weight of each amenity
     
         #Extrapolation at the grid level
-        grid_amenity = pd.read_csv('./2. Data/grid_amenity.csv', sep = ';')
+        grid_amenity = pd.read_csv('./2. Data/grid_amenities.csv', sep = ',')
+        #grid_amenity = pd.read_csv('./2. Data/grid_amenity.csv', sep = ';')
 
         airport_cone2 = copy.deepcopy(grid_amenity.airport_cone)
         airport_cone2[grid_amenity.airport_cone == 55] = 1
@@ -147,13 +150,14 @@ class Amenity:
         airport_cone2[grid_amenity.airport_cone == 70] = 1
         airport_cone2[grid_amenity.airport_cone == 75] = 1
 
-        if dist_RDP != 2:
-            matrix_distance = ((numpy.matlib.repmat(grille.coord_horiz, len(grille.coord_horiz), 1) - numpy.matlib.repmat(np.transpose(grille.coord_horiz), 1, len(grille.coord_horiz))) ** 2 + (repmat(grille.coord_vert, len(grille.coord_horiz), 1) - repmat(np.transpose(grille.coord_vert), 1, len(grille.coord_horiz))) ** 2) < dist_RDP ** 2
-            grid_distance_RDP = np.transpose(land.RDP_houses_estimates > 5 * np.transpose(matrix_distance)) > 1
-        else:
-            load(strcat('.', slash, 'precalculations', slash, 'grid_distance_RDP'))
+        #if dist_RDP != 2:
+            #matrix_distance = ((numpy.matlib.repmat(grille.coord_horiz, len(grille.coord_horiz), 1) - numpy.matlib.repmat(np.transpose(grille.coord_horiz), 1, len(grille.coord_horiz))) ** 2 + (repmat(grille.coord_vert, len(grille.coord_horiz), 1) - repmat(np.transpose(grille.coord_vert), 1, len(grille.coord_horiz))) ** 2) < dist_RDP ** 2
+            #grid_distance_RDP = np.transpose(land.RDP_houses_estimates > 5 * np.transpose(matrix_distance)) > 1
+        #else:
+            #load(strcat('.', slash, 'precalculations', slash, 'grid_distance_RDP'))
+        grid_distance_rdp = scipy.io.loadmat('./2. Data/gridDistanceRDP.mat')
 
-        table_predictors = pd.DataFrame(data= np.transpose([grid_amenity.distance_distr_parks < 2, grid_amenity.distance_ocean < 2, grid_amenity.distance_urban_herit < 2, airport_cone2, np.log(1 + grid_amenity.slope), grid_amenity.distance_protected_envir < 2, np.log(1 + grid_distance_RDP)]))
+        table_predictors = pd.DataFrame(data= np.transpose([grid_amenity.distance_distr_parks < 2, grid_amenity.distance_ocean < 2, grid_amenity.distance_urban_herit < 2, airport_cone2, np.log(1 + grid_amenity.slope), grid_amenity.distance_protected_envir < 2, np.log(1 + grid_distance_rdp["gridDistanceRDP"]).squeeze()]))
 
         amenity_estimated_amenities = np.exp(amenity_coeff_beta * np.transpose(model_amenity.coef[2:8]) * table_predictors) # A vérifier  
         

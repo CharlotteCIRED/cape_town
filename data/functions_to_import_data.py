@@ -7,7 +7,10 @@ Created on Wed Jun 17 11:08:34 2020
 
 import pandas as pd
 import numpy as np
+import scipy
 from scipy.interpolate import interp1d
+import numpy.matlib
+from scipy.interpolate import griddata
 
 def data_SP_vers_grille(data_SP, data_courbe_SP_Code, grille):  
     grid_intersect = pd.read_csv('./2. Data/grid_SP_intersect.csv', sep = ';')   
@@ -150,11 +153,11 @@ def import_donnees_metro_poly(poly, grille,param):
                 duration[j,i] = duration[i,j]
 
     #pour chaque point de grille la station la plus proche, et distance
-    ID_station_grille = griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), (metro_station.ID_station - 1), (grille.coord_horiz, grille.coord_vert), method = 'nearest')
+    ID_station_grille = scipy.interpolate.griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), (metro_station.ID_station - 1), (grille.coord_horiz, grille.coord_vert), method = 'nearest')
     distance_grille = np.zeros((len(grille.coord_horiz), 1))
 
     #Pour chaque centre d'emploi la station la plus proche, et distance
-    ID_station_center = griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), (metro_station.ID_station - 1), (poly.Jx, poly.Jy), method = 'nearest')
+    ID_station_center = scipy.interpolate.griddata((metro_station.X_cape / 1000, metro_station.Y_cape / 1000), (metro_station.ID_station - 1), (poly.Jx, poly.Jy), method = 'nearest')
     distance_center = np.zeros((len(poly.Jx), 1))
     for i in range(0, len(poly.Jx)):
         distance_center[i] = np.sqrt((poly.Jx[i] - metro_station.X_cape[ID_station_center[i]] / 1000) ** 2 + (poly.Jy[i] - metro_station.Y_cape[ID_station_center[i]] / 1000) ** 2)
@@ -173,14 +176,15 @@ def import_donnees_metro_poly(poly, grille,param):
 
     return distance_metro, duration_metro
 
-def revenu2_polycentrique(macro, param, option, grille, poly, T):
-    t = np.transpose(T)
+def revenu2_polycentrique(macro, param, option, grille, poly, t_trafic, index):
+    t = np.transpose(t_trafic)
 
     #evolution du revenu...
-    revenu_tmp = interp1d(poly.annee - param["year_begin"], poly.avg_inc, T)
-    revenu = np.zeros((len(poly.Jx), len(grille.dist), len(T)))
-    for index in range(0, len(T)):
-        revenu(:,:,index) = revenu_tmp(:,index) * np.ones((grille.dist).shape)
+    #revenu_tmp = interp1d(np.array(poly.annee) - param["year_begin"], poly.avg_inc, T)
+    revenu_tmp = interp1d(np.array(poly.annee) - param["year_begin"], np.transpose(poly.avg_inc))
+    revenu = np.zeros(((len(poly.Jx), len(grille.dist), 7)))
+    temp = np.matlib.repmat(pd.DataFrame(revenu_tmp(t_trafic[index])), 1, (grille.dist).shape))
+    revenu[:,:, index] = np.reshape(temp, 4, (grille.dist).shape)))
     return revenu
 
 '''
