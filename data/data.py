@@ -20,7 +20,7 @@ class ImportDataCourbe:
     def import_data(self, grille, param):
         
         # %% Recensement 2011
-        dwellings_data = pd.read_csv('./2. Data/sub-places-dwelling-statistics.csv', sep = ';')
+        dwellings_data = pd.read_csv('./2. Data/Basile data/sub-places-dwelling-statistics.csv', sep = ';')
         
         #Define a grid with SP data
         data_courbe_SP_X = dwellings_data.CoordX/1000
@@ -61,14 +61,14 @@ class ImportDataCourbe:
         data_courbe_formal_grid = data_SP_vers_grille_alternative(data_courbe_SP_total_dwellings - data_courbe_SP_informal_settlement - data_courbe_SP_informal_backyard, data_courbe_SP_Code, grille)
 
         # %% income distribution 2011
-        income_distrib = pd.read_csv('./2. Data/Income_distribution_2011.csv', sep=",")
+        income_distrib = pd.read_csv('./2. Data/Basile data/Income_distribution_2011.csv', sep=",")
         data_courbe_INC_med = income_distrib.INC_med #Median income for each income group
         data_courbe_limit = np.zeros(param["multiple_class"]) #Min. income for each income class
         for j in range(0, param["multiple_class"]):
             data_courbe_limit[j] = np.max(income_distrib.INC_max.iloc[param["income_distribution"] == j])
  
         # %% Recensement 2001
-        income_2001 = pd.read_csv('./2. Data/Census_2001_income.csv', sep = ";")
+        income_2001 = pd.read_csv('./2. Data/Basile data/Census_2001_income.csv', sep = ";")
         
         #Define a grid with SP data
         data_courbe_SP_2001_X = income_2001.X_2001 / 1000
@@ -95,7 +95,7 @@ class ImportDataCourbe:
         data_courbe_total_number_per_income_bracket = np.array([sum(np.array(data_courbe_SP_2001_12_class)[data_courbe_SP_2001_CT, :]), sum(np.array(data_courbe_SP_income_12_class)[data_courbe_SP_2011_CT, :])])
         
         # %% Dwelling types 2001
-        dwelling_type_2001 = pd.read_csv('./2. Data/Census_2001_dwelling_type.csv', sep = ';')
+        dwelling_type_2001 = pd.read_csv('./2. Data/Basile data/Census_2001_dwelling_type.csv', sep = ';')
         
         formal = dwelling_type_2001.House_brick_structure_separate_stand + dwelling_type_2001.Flat_in_block + dwelling_type_2001.semi_detached_house + dwelling_type_2001.House_flat_in_backyard + dwelling_type_2001.Room_flatlet_shared_property + dwelling_type_2001.Caravan_tent + dwelling_type_2001.Ship_boat
         backyard = dwelling_type_2001.Informal_dwelling_in_backyard
@@ -117,7 +117,7 @@ class ImportDataCourbe:
 
         # %% Real estate data 2012
         #Sales data were previously treaty and aggregated at the SP level on R
-        sale_price = pd.read_csv('./2. Data/SalePriceStat_SP.csv', sep = ',')
+        sale_price = pd.read_csv('./2. Data/Basile data/SalePriceStat_SP.csv', sep = ',')
         
         #Grid for sale data
         data_courbe_X_price = np.transpose(data_courbe_SP_X)
@@ -134,7 +134,7 @@ class ImportDataCourbe:
         data_courbe_SP_price[data_courbe_SP_price == 0] = np.nan
         
         # %% Données SAL 2011 de la ville du Cap
-        sal_coord = pd.read_csv('./2. Data/Res_SAL_coord.csv', sep = ';')
+        sal_coord = pd.read_csv('./2. Data/Basile data/Res_SAL_coord.csv', sep = ';')
         
         #Define a grid for SAL data
         data_courbe_X_sal = sal_coord.X_sal_CAPE / 1000
@@ -168,7 +168,7 @@ class ImportDataCourbe:
     
         # %% Enumerator Area definition from the 2011 census - informal settlements areas
         
-        ea_data = pd.read_csv('./2. Data/EA_definition_CPT_CAPE.csv', sep = ';')
+        ea_data = pd.read_csv('./2. Data/Basile data/EA_definition_CPT_CAPE.csv', sep = ';')
         data_courbe_SP_area_urb_from_EA = np.zeros(len(data_courbe_SP_Code))
         data_courbe_SP_formal_dens_HFA = np.zeros(len(data_courbe_SP_Code))
         for i in range(0, len(data_courbe_SP_Code)):
@@ -178,7 +178,7 @@ class ImportDataCourbe:
         data_courbe_SP_formal_dens_HFA[data_courbe_SP_formal_dens_HFA > 3] = np.nan
 
         # %% Residential construction data at the SP level
-        sp_res_data = pd.read_csv('./2. Data/SP_res_data.csv', sep = ';')
+        sp_res_data = pd.read_csv('./2. Data/Basile data/SP_res_data.csv', sep = ';')
         SP_CODE_SAL = copy.deepcopy(sp_res_data.SP_CODE)
         data_courbe_SP_floor_factor = 1000000 * np.ones(len(data_courbe_SP_Code))
         data_courbe_SP_share_urbanised = 1000000 * np.ones(len(data_courbe_SP_Code))
@@ -194,7 +194,7 @@ class ImportDataCourbe:
 
 
         # %% RDP houses (= subsidized housing) from GV2012
-        rdp_houses = pd.read_csv('./2. Data/GV2012_grid_RDP_count2.csv', sep = ';')
+        rdp_houses = pd.read_csv('./2. Data/Basile data/GV2012_grid_RDP_count2.csv', sep = ';')
         data_courbe_GV_count_RDP = np.transpose(rdp_houses.count_RDP)
         data_courbe_GV_area_RDP = np.transpose(rdp_houses.area_RDP)
 

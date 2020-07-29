@@ -7,8 +7,8 @@ Created on Wed Jun 17 11:12:44 2020
 
 from scipy.interpolate import interp1d
 import copy
-from numpy import np
-from pandas import pd
+import numpy as np
+import pandas as pd
 
 def construction(param,macro,revenu):
     return (revenu / macro.revenu_ref) ** (- param["coeff_b"]) * param["coeff_grandA"]
@@ -34,18 +34,18 @@ def housing_construct(R,option,housing_limite_ici,construction_ici,param,transac
 def housing_backyard(R, grille, param, basic_q_formal, revenu1, prix_tc_RDP):
     """ Calculates the backyard available for construction as a function of rents """
 
-    housing = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (revenu1(1,:) - prix_tc_RDP) / ((param["backyard_size"]) * R)
-    housing(revenu1(1,:) < prix_tc_RDP) = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (revenu1(1, revenu1(1,:) < prix_tc_RDP)) / ((param["backyard_size"]) * R(revenu1(1,:) < prix_tc_RDP))
+    housing = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (revenu1[0,:] - prix_tc_RDP) / ((param["backyard_size"]) * R)
+    housing[revenu1[0,:] < prix_tc_RDP] = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (revenu1[0, revenu1[0,:] < prix_tc_RDP]) / ((param["backyard_size"]) * R(revenu1[0,:] < prix_tc_RDP))
     housing[R == 0] = 0
     housing = np.min(housing, 1)
     housing = np.max(housing, 0)
 
     return housing
 
-def housing_informal(R, grille, param, poly, revenu1, prix_tc, proba)
+def housing_informal(R, grille, param, poly, revenu1, prix_tc, proba):
     """ Calculates the backyard available for construction as a function of rents """
 
-    net_income = sum(proba(poly.class == 1, :) * (revenu1(poly.class == 1, :) - prix_tc(poly.class == 1, :))) / sum(proba(poly.class == 1, :))
+    net_income = sum(proba[poly.classes == 0, :] * (revenu1[poly.classes == 0, :] - prix_tc[poly.classes == 0, :])) / sum(proba[poly.classes == 0, :])
     housing = 1 + param["coeff_alpha"] / param["coeff_mu"] - net_income / R
     housing = np.max(housing, 1)
     housing = np.min(housing, 2)
@@ -54,22 +54,26 @@ def housing_informal(R, grille, param, poly, revenu1, prix_tc, proba)
     return housing
 
 
-def definit_R_formal(Uo,param,trans_tmp,grille,revenu1,amenite,solus,uti):
-    """ Stone Geary utility function """
+#def definit_R_formal(Uo,param,trans_tmp_cout_generalise,grille,revenu1,amenite,solus,uti):
     
-    R_mat = solus(revenu1 - double(trans_tmp.cout_generalise), np.tranpose(Uo) * np.ones(1,size(revenu1,2)) / amenite)
-    return R_mat
+    """ Stone Geary utility function """
+    #if amenite
+    #factor_b = (np.matlib.repmat(Uo, n = 1, m = revenu1.shape[1])/ amenite)
+    #factor_a = (revenu1) - trans_tmp_cout_generalise
+    #R_mat = solus(revenu1 - trans_tmp_cout_generalise, (np.matlib.repmat(Uo, n = 1, m = revenu1.shape[1])/ amenite))
+    #return R_mat
 
-def definit_R_informal(Uo,param,trans_tmp,income,amenity):
+def definit_R_informal(Uo,param,trans_tmp_cout_generalise,income,amenity):
 
     R_mat = 1 / param["size_shack"] * (income - trans_tmp.cout_generalise - (repmat(np.tranpose(Uo),1,np.size(income,2))/(amenity * (param["size_shack"] - param["basic_q"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"]))
     return R_mat                                                                               
 
 def utilite(Ro,revenu,basic_q,param):
-    
+    #Ro = np.transpose(np.matlib.repmat(Ro, n = 1, m = revenu.shape[1]))
+    #print(Ro.shape)
     if (basic_q !=0):
         utili = param["coeff_alpha"] ** param["coeff_alpha"] * param["coeff_beta"] ** param["coeff_beta"] * np.sign(revenu-basic_q * Ro) * np.abs(revenu-basic_q * Ro) / (Ro ** param["coeff_beta"])
-            utili((1 - basic_q * Ro / revenu)<0)=0
+        utili[(1 - basic_q * Ro / revenu) < 0] = 0
     else:
         utili = param["coeff_alpha"] ** param["coeff_alpha"] * param["coeff_beta"] ** param["coeff_beta"] * revenu / (Ro ** param["coeff_beta"])
 
@@ -78,16 +82,18 @@ def utilite(Ro,revenu,basic_q,param):
 
 def utilite_amenite(Z,hous, param, amenite, revenu,Ro):
     
-    if Ro == 0
-        utili = Z ** (param["coeff_alpha"]) * (hous - param("basic_q"]) ** param["coeff_beta"]
-    else
-        Ro = np.transpose(np.ones(length(revenu(1,:)),1) * Ro)
+    if Ro == 0:
+        utili = Z ** (param["coeff_alpha"]) * (np.transpose(hous) - param["basic_q"]) ** param["coeff_beta"]
+    else:
+        Ro = np.transpose(np.ones(len(revenu[1,:]), 1) * Ro)
         utili = param["coeff_alpha"] ** param["coeff_alpha"] * param["coeff_beta"] ** param["coeff_beta"] * np.sign(revenu - param["basic_q"] * Ro) * np.abs(revenu- param["basic_q"] * Ro) / (Ro ** param["coeff_beta"])
 
-    utili = utili * amenite
+    utili = utili * np.transpose(amenite)
     utili[revenu==0] = 0
     return utili
 
+
+"""
 def courbes_ici(poly,job_simul_total,Jval,grille,rent,index_t,val_max, val_max_no_abs, val_moy,nombre,loyer_de_ref,precision):
 
     subplot(2,3,1)
@@ -137,4 +143,4 @@ def courbes_ici(poly,job_simul_total,Jval,grille,rent,index_t,val_max, val_max_n
     xlabel('number of iteration')
     ylabel('max error / no abs')
 
-    toc()
+    toc() """

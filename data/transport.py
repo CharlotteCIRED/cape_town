@@ -11,6 +11,7 @@ from data.functions_to_import_data import *
 import numpy.matlib
 from scipy.interpolate import griddata
 import scipy.io
+import copy
 
 class TransportData:
         
@@ -18,7 +19,7 @@ class TransportData:
         
         self
         
-    def charges_temps_polycentrique_CAPE_TOWN_3(self, option, grille, macro, param, poly, t_trafic):
+    def charges_temps_polycentrique_CAPE_TOWN_3(self, option, grille, macro_data, param, poly, t_trafic):
         """ Compute travel times and costs """
 
         referencement = poly.referencement
@@ -31,8 +32,9 @@ class TransportData:
         distance_metro_2, duration_metro_2 = import_donnees_metro_poly(poly, grille, param)
 
         #Load distance and duration with each transportation mode
-        transport_time_grid = scipy.io.loadmat('./2. Data/Transport_times_GRID.mat')
-        transport_time_sp = scipy.io.loadmat('./2. Data/Transport_times_SP.mat')
+        transport_time_grid = scipy.io.loadmat('./2. Data/Basile data/Transport_times_GRID.mat')
+        transport_time_sp = scipy.io.loadmat('./2. Data/Basile data/Transport_times_SP.mat')
+        
         #load transport times
         #distance_car = distance_vol_oiseau
         #duration_car = cars
@@ -77,13 +79,15 @@ class TransportData:
             duration_metro = duration_metro[135]
             duration_minibus = duration_minibus[135]
             duration_bus = duration_bus[135]
+            nb_center = 1
         elif option["polycentric"] == 1:
-            distance_car = distance_car[(135, 40, 10, 34, 108, 165),:]
-            duration_car = duration_car[(135, 40, 10, 34, 108, 165),:]
-            distance_metro = distance_metro[(135, 40, 10, 34, 108, 165),:]
-            duration_metro = duration_metro[(135, 40, 10, 34, 108, 165),:]
-            duration_minibus = duration_minibus[(135, 40, 10, 34, 108, 165),:]
-            duration_bus = duration_bus[(135, 40, 10, 34, 108, 165),:]
+            distance_car = distance_car[(10, 34, 40, 108, 135, 155),:]
+            duration_car = duration_car[(10, 34, 40, 108, 135, 155),:]
+            distance_metro = distance_metro[(10, 34, 40, 108, 135, 155),:]
+            duration_metro = duration_metro[(10, 34, 40, 108, 135, 155),:]
+            duration_minibus = duration_minibus[(10, 34, 40, 108, 135, 155),:]
+            duration_bus = duration_bus[(10, 34, 40, 108, 135, 155),:]
+            nb_center = 6
             
         #Pour le centre : restreindre à 135
         #5101 (CBD): 135
@@ -100,10 +104,18 @@ class TransportData:
             trans_reliable[np.isnan(duration_metro)] = 0
             trans_reliable[np.isnan(duration_minibus)] = 0
             trans_reliable[np.isnan(duration_bus)] = 0
-
+        elif option["polycentric"] == 1:
+            trans_reliable = np.ones((nb_center, len(grille.dist)))
+            for i in range(0, nb_center):
+                trans_reliable[np.isnan(duration_car[:,i])] = 0
+                trans_reliable[np.isnan(duration_metro[:,i])] = 0
+                trans_reliable[np.isnan(duration_minibus[:,i])] = 0
+                trans_reliable[np.isnan(duration_bus[:,i])] = 0
+        
         #Définition des variables de temps et distance
-        LongueurTotale_VP = distance_car * 1.2
-        LongueurEnVehicule_TC = distance_metro_2  #pour le coût en métro, les coûts dépendent de la distance à la gare centrale du Cap (LongueurEnVehicule_TC n'est donc pas la distance parcourue en TC)
+        LongueurTotale_VP = np.array([distance_car[0], distance_car[0], distance_car[0], distance_car[0], distance_car[1], distance_car[1], distance_car[1], distance_car[2], distance_car[2], distance_car[2], distance_car[2], distance_car[4], distance_car[4], distance_car[4], distance_car[4], distance_car[5], distance_car[5], distance_car[5]])
+        LongueurTotale_VP = LongueurTotale_VP * 1.2
+        LongueurEnVehicule_TC = distance_metro_2 #pour le coût en métro, les coûts dépendent de la distance à la gare centrale du Cap (LongueurEnVehicule_TC n'est donc pas la distance parcourue en TC)
 
         increment = range(0, len(poly.quel))
         
@@ -133,14 +145,14 @@ class TransportData:
         prix_essence_mois = prix_essence * 2 * 20
     
         #Transport times
-        TEMPSHPM = duration_car
-        TEMPSTC = duration_metro #duration_metro_2
-        TEMPS_MINIBUS = duration_minibus
-        TEMPS_BUS = duration_bus
-        temps_pieds_temp = LongueurTotale_VP / param["speed_walking"] * 60 + complement_trajet_pieds
+        TEMPSHPM = np.array([duration_car[0], duration_car[0], duration_car[0], duration_car[0], duration_car[1], duration_car[1], duration_car[1], duration_car[2], duration_car[2], duration_car[2], duration_car[2], duration_car[4], duration_car[4], duration_car[4], duration_car[4], duration_car[5], duration_car[5], duration_car[5]])
+        TEMPSTC = duration_metro_2 #duration_metro
+        TEMPS_MINIBUS = np.array([duration_minibus[0], duration_minibus[0], duration_minibus[0], duration_minibus[0], duration_minibus[1], duration_minibus[1], duration_minibus[1], duration_minibus[2], duration_minibus[2], duration_minibus[2], duration_minibus[2], duration_minibus[4], duration_minibus[4], duration_minibus[4], duration_minibus[4], duration_minibus[5], duration_minibus[5], duration_minibus[5]])
+        TEMPS_BUS = np.array([duration_bus[0], duration_bus[0], duration_bus[0], duration_bus[0], duration_bus[1], duration_bus[1], duration_bus[1], duration_bus[2], duration_bus[2], duration_bus[2], duration_bus[2], duration_bus[4], duration_bus[4], duration_bus[4], duration_bus[4], duration_bus[5], duration_bus[5], duration_bus[5]])
+        temps_pieds_temp = (LongueurTotale_VP) / param["speed_walking"] * 60 + complement_trajet_pieds
         temps_pieds_temp[np.isnan(TEMPSHPM)] = np.nan #si on ne fait pas ça, on a des 0 au lieu d'avoir des nan
         temps_pieds_temp = pd.DataFrame(temps_pieds_temp)
-        temps_sortie = np.empty((24014,1, 5))
+        temps_sortie = np.empty((18, 24014, 5))
         temps_sortie[:,:,0] = temps_pieds_temp #temps pour rejoindre à pieds
         temps_sortie[:,:,1] = pd.DataFrame(TEMPSTC + complement_trajet_TC) #temps en TC
         temps_sortie[:,:,2] = pd.DataFrame(TEMPSHPM + complement_trajet_voiture) #temps en voiture
@@ -149,9 +161,9 @@ class TransportData:
         #temps_sortie=single(temps_sortie);
 
         #interpolation avec prix transport en commun en fonction nombre km
-        mult_prix_sortie = np.empty((24014, 1, 5))
-        mult_prix_sortie[:,:,0] = np.zeros((temps_sortie[:,:,1]).shape)
-        mult_prix_sortie[:,:,1] = pd.DataFrame(LongueurEnVehicule_TC[0])
+        mult_prix_sortie = np.empty((18, 24014, 5))
+        mult_prix_sortie[:,:,0] = np.zeros((mult_prix_sortie[:,:,0]).shape)
+        mult_prix_sortie[:,:,1] = pd.DataFrame(LongueurEnVehicule_TC)
         mult_prix_sortie[:,:,2] = pd.DataFrame(LongueurTotale_VP)
         mult_prix_sortie[:,:,3] = pd.DataFrame(LongueurTotale_VP)
         mult_prix_sortie[:,:,4] = pd.DataFrame(LongueurTotale_VP)
@@ -164,18 +176,17 @@ class TransportData:
         prix_sortie_unitaire[:,4] = prix_bus_km * 2 * 20 * 12
 
         #distances parcourues (ne sert pas dans le calcul mais est une donnée utile)
-        distance_sortie = np.empty((24014, 1, 5))
+        distance_sortie = np.empty((18, 24014, 5))
         distance_sortie[:,:,0] = pd.DataFrame(LongueurTotale_VP)
-        distance_sortie[:,:,1] = pd.DataFrame(LongueurEnVehicule_TC[0])
+        distance_sortie[:,:,1] = pd.DataFrame(LongueurEnVehicule_TC)
         distance_sortie[:,:,2] = pd.DataFrame(LongueurTotale_VP)
         distance_sortie[:,:,3] = pd.DataFrame(LongueurTotale_VP)
         distance_sortie[:,:,4] = pd.DataFrame(LongueurTotale_VP)
 
         trans_distance_sortie = distance_sortie #trans.distance_sortie = single(distance_sortie)
-        #prix_monetaire = np.zeros((len(poly.code_emploi_poly[referencement]), temps_sortie.shape[1], trans_nbre_modes))
-        prix_monetaire = np.zeros((24014, 4, trans_nbre_modes))
-        cout_generalise = (np.zeros((len(poly.code_emploi_poly[referencement]), temps_sortie.shape[1], len(t_trafic))))
-        quel = (np.zeros((poly.code_emploi_poly[referencement].shape[0], temps_sortie.shape[1])))
+        prix_monetaire = np.zeros((len(poly.code_emploi_poly[referencement]), 24014, trans_nbre_modes))
+        cout_generalise = (np.zeros((len(poly.code_emploi_poly[referencement]), 24014, len(t_trafic))))
+        quel = (np.zeros((len(poly.code_emploi_poly[referencement]), 24014, len(t_trafic))))
 
         mult = cout_generalise
         cout_generalise_ancien = cout_generalise
@@ -183,59 +194,63 @@ class TransportData:
 
         taille_menage_mat = np.matlib.repmat(param["taille_menage_transport"], 1, int(len(poly.code_emploi_init) / param["multiple_class"]))
         taille_menage_mat = np.matlib.repmat(np.transpose(taille_menage_mat.squeeze()[poly.quel]), 1, len(grille.dist)) #pour prendre en compte des tailles de ménages différentes
-        taille_menage_mat = np.reshape(taille_menage_mat,(len(grille.dist), 4))
+        taille_menage_mat = np.reshape(taille_menage_mat, (len(grille.dist), 18)) #24014 * 4
         
         #boucle sur le temps
         for index in range(0, len(tbis)):
             for index2 in range(0, trans_nbre_modes):
-                prix_monetaire[:,:,index2] = prix_sortie_unitaire[index, index2] * mult_prix_sortie[:, :, index2]
-                prix_monetaire[:,:,index2] = prix_monetaire[:, :, index2] * taille_menage_mat
-            trans_cout_generalise = prix_monetaire #sert juste pour mettre dans la fonction revenu2_polycentrique          
+                prix_monetaire[:,:,index2] = prix_sortie_unitaire[index, index2] * mult_prix_sortie[:, :, index2] #On multiplie le prix par km par la distance pour avoir le prix sur le total du trajet
+                prix_monetaire[:,:,index2] = prix_monetaire[:, :, index2] * np.transpose(taille_menage_mat) #On multiplie le tout par le nombre de personne par ménage, qui varie selon la classe de ménage (d'où le format 24014 * 4 * 5)
+            #trans_cout_generalise = copy.deepcopy(prix_monetaire) #sert juste pour mettre dans la fonction revenu2_polycentrique          
             
-            revenu_ici = revenu2_polycentrique(macro_data, param, option, grille, poly, t_trafic, index)
-            revenu_ici = np.matlib.repmat(revenu_ici, np.array([1, 1, size(prix_monetaire, 3)]))
-    
             #ajout des couts fixes
-            prix_monetaire[:,:,1] = prix_monetaire[:,:,1] + prix_metro_fixe_mois[index] * 12 * taille_menage_mat #train, avec abonnement mensuel
-            prix_monetaire[:,:,2] = prix_monetaire[:,:,2] + prix_fixe_vehicule_mois[index] * 12 * taille_menage_mat #voiture
-            prix_monetaire[:,:,3] = prix_monetaire[:,:,3] + prix_taxi_fixe_mois[index] * 12 * taille_menage_mat #minibus-taxi
-            prix_monetaire[:,:,4] = prix_monetaire[:,:,4] + prix_bus_fixe_mois[index] * 12 * taille_menage_mat #bus
+            prix_monetaire[:,:,1] = prix_monetaire[:,:,1] + prix_metro_fixe_mois[index] * 12 * np.transpose(taille_menage_mat) #train, avec abonnement mensuel
+            prix_monetaire[:,:,2] = prix_monetaire[:,:,2] + prix_fixe_vehicule_mois[index] * 12 * np.transpose(taille_menage_mat) #voiture
+            prix_monetaire[:,:,3] = prix_monetaire[:,:,3] + prix_taxi_fixe_mois[index] * 12 * np.transpose(taille_menage_mat) #minibus-taxi
+            prix_monetaire[:,:,4] = prix_monetaire[:,:,4] + prix_bus_fixe_mois[index] * 12 * np.transpose(taille_menage_mat) #bus
 
             number_hour_week = 40
             number_weeks = 52
+            revenu_ici = revenu2_polycentrique(macro_data, param, option, grille, poly, t_trafic, index) #4, 2014, 7 ---> ne devrait pas dépendant du temps (2014 * 4)
+            #revenu_ici = np.matlib.repmat(revenu_ici, 2014)
             income_per_hour = revenu_ici / number_weeks / number_hour_week
-            prix_temps = temps_sortie * param["prix_temps"] * income_per_hour / 60 * 2 * 20 * 12
+            prix_temps = np.empty((24014, 18 , 5))
+            for i in range(0,18):
+                prix_temps[:,i,:] = temps_sortie[i,:,:] * param["prix_temps"] * income_per_hour[i]  / 60 * 2 * 20 * 12
+            #prix_temps = temps_sortie * param["prix_temps"] * income_per_hour / 60 * 2 * 20 * 12 #21014 * 4 * 2011* 4 * 5
         
-            if NON_LIN == 1:
-                prix_temps[temps_sortie > param["limite_temps"]] = (param["limite_temps"] * param["prix_temps"] + (temps_sortie[temps_sortie > param["limite_temps"]] - param["limite_temps"]) * param["prix_temps2"]) * income_per_hour[temps_sortie > param["limite_temps"]] / 60 * 2 * 20 * 12
-                                                                
-            prix_final = prix_monetaire + prix_temps
-    
+            #if NON_LIN == 1:
+                #prix_temps[temps_sortie > param["limite_temps"]] = (param["limite_temps"] * param["prix_temps"] + (temps_sortie[temps_sortie > param["limite_temps"]] - param["limite_temps"]) * param["prix_temps2"]) * income_per_hour[temps_sortie > param["limite_temps"]] / 60 * 2 * 20 * 12
+            
+            prix_temps = np.swapaxes(prix_temps, 0, 1)
+            prix_final = prix_monetaire + prix_temps #20014 * 4 * 5
+            
             if index == 1:
                 trans_prix_monetaire_init = prix_monetaire
                 trans_prix_temps_init = prix_temps
        
-            if option["LOGIT"] == 1:
-                mini_prix[:,:,0] = min(prix_final,[],3)
-                mini_prix[:,:,1] = mini_prix[:,:,0]
-                mini_prix[:,:,2] = mini_prix[:,:,0]
-                mini_prix[:,:,3] = mini_prix[:,:,0]
-                mini_prix[:,:,4] = mini_prix[:,:,0]
+            #if option["LOGIT"] == 1:
+             #   mini_prix = np.empty((24014, 4, 5))
+             #   mini_prix[:,:,0] = np.min(prix_final, axis = 2)
+             #   mini_prix[:,:,1] = mini_prix[:,:,0]
+             #   mini_prix[:,:,2] = mini_prix[:,:,0]
+             #   mini_prix[:,:,3] = mini_prix[:,:,0]
+             #   mini_prix[:,:,4] = mini_prix[:,:,0]
 
-                coeff_logit = param["facteur_logit"] / mini_prix
-                mode_logit = logit(coeff_logit, prix_final, trans.nbre_modes)
+             #   coeff_logit = param["facteur_logit"] / mini_prix
+             #   mode_logit = logit(coeff_logit, prix_final, trans.nbre_modes)
         
-                mult[:,:,index] = (pour_moyenne_logit(coeff_logit, prix_final) / param["facteur_logit"])
-                cout_generalise[:,:,index] = single(pour_moyenne_logit(coeff_logit,prix_final) / coeff_logit[:,:,0])
+             #   mult[:,:,index] = (pour_moyenne_logit(coeff_logit, prix_final) / param["facteur_logit"])
+             #   cout_generalise[:,:,index] = single(pour_moyenne_logit(coeff_logit,prix_final) / coeff_logit[:,:,0])
         
-                cout_generalise_ancien[:,:,index] = (sum(prix_final * mode_logit,3))
+             #   cout_generalise_ancien[:,:,index] = (sum(prix_final * mode_logit,3))
         
-                quel = mode_logit #ATTENTION, trans.quel ne depend plus du temps ici
+             #   quel = mode_logit #ATTENTION, trans.quel ne depend plus du temps ici
                 
-                trans_prix_temps[:,:,index] = sum(quel * prix_temps, 3)
-            else:
-                cout_generalise[:,:,index] = min((prix_final),[],trans_nbre_modes)
-                quel[:,:,index] = np.argmin((prix_final),[],trans_nbre_modes)
+             #   trans_prix_temps[:,:,index] = sum(quel * prix_temps, 3)
+            #else:
+            cout_generalise[:,:,index] = np.min(prix_final, axis = 2)
+            quel[:,:,index] = np.argmin(prix_final, axis = 2)
            
         trans_t_transport = t_trafic + param["year_begin"]
         trans_cout_generalise = cout_generalise
@@ -249,80 +264,9 @@ class TransportData:
         self.cout_generalise = trans_cout_generalise
         self.prix_monetaire_init = trans_prix_monetaire_init
         self.prix_temps_init = trans_prix_temps_init
-        self.prix_temps = trans_prix_temps
+        self.prix_temps = prix_temps
         self.t_transport = trans_t_transport
         self.quel = trans_quel
         self.mult = trans_mult
         self.temps_sortie = trans_temps_sortie
         
-
-
-
-
-'''
-liste={'bustsh','carstt','taxitsh','totaltsh','traintt','bustt','cartsh','taxitt','traintsh','walktsh'};
-
-for i=liste
-    i=char(i);
-    eval([i,'=importfile_mat(''./data/transport/',i,'.csv'');'])
-end
-
-%importation et sauvegarde de la liste des codes des zones
-liste1=importfile_mat('./data/transport/carstt.csv',1, 1);
-liste2=liste1;
-%save('liste.mat','liste1','liste2');
-
-%% importation des coordonn?es des zones
-
-%fichier de donn?es sur els zones: emplois et coordonn?es
-[X,Y,TZ2013,Area,diss,Zones,BY5Origins,BY5Destina,PTODOrigin,PTODDestin,emploi_TAZ,emploi_T_1,emploi_T_2,emploi_T_3,emploi_T_4,emploi_T_5,emploi_T_6,emploi_T_7,emploi_T_8,job_total,job_dens,Ink1,Ink2,Ink3,Ink4,job_tot] ...
-    = importfile_TAZ('./data/TAZ_amp_2013_proj_centro2.csv');
-
-%on r?-ordonne les temps de transport comme il faut, pour qu'ils soient
-%dans le m?me ordre que les zones
-cars=zeros(size(TZ2013));
-bus=zeros(size(TZ2013));
-taxi=zeros(size(TZ2013));
-train=zeros(size(TZ2013));
-for index1=1:length(TZ2013),
-   for index2=1:length(TZ2013),
-       choix1=(liste1==TZ2013(index1));
-       choix2=(liste2==TZ2013(index2));
-       if (sum(choix1)>0)&&(sum(choix2)>0),
-           cars(index1,index2)=carstt(choix1,choix2);
-           bus(index1,index2)=bustt(choix1,choix2);
-           taxi(index1,index2)=taxitt(choix1,choix2);
-           train(index1,index2)=traintt(choix1,choix2);
-       end
-   end
-   waitbar(index1/length(TZ2013));
-end
-
-%calcul de la distance ? vol d'oiseau d'une zone ? l'autre
-distance_vol_oiseau=zeros(size(TZ2013));
-for index=1:length(TZ2013),
-    distance_vol_oiseau(:,index)=sqrt((X-X(index)).^2+(Y-Y(index)).^2)/1000;
-end
-
-%sauvegarde de tout ?a
-save('transport_time','cars','bus','train','taxi', 'X','Y','distance_vol_oiseau','Area');
-
-%% OPTIONNEL: calcul des densit;es d'emploi liss?es apr surface
-
-emploi=zeros(size(TZ2013));
-for index1=1:length(TZ2013),
-    garde=(cars(index1,:)<=5);
-    garde(cars(index1,:)==0)=0;
-    garde(index1)=1;
-    if sum(garde)>0,
-       %pour avoir la densit? d'emploi
-       emploi(index1)=sum(job_total(garde).*Area(garde))./sum(Area(garde));
-       %pour avoir la somme des smplois ? moins d'un certain temps en
-       %voiture
-       %emploi(index1)=sum(job_total(garde));
-    end
-end
-
-%% (pour tracer une carte)
-trace_points_carte( cdata, X/1000,Y/1000,emploi);
-'''

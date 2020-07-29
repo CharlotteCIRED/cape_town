@@ -19,8 +19,8 @@ class ImportEmploymentData:
     def import_employment_data(self, grille, param, option, macro_data, t):
         
         #Import data
-        TAZ = pd.read_csv('./2. Data/TAZ_amp_2013_proj_centro2.csv') #Number of jobs per Transport Zone (TZ)
-        TAZ2013_centre = pd.read_csv('./2. Data/TAZ_final.csv') #The 44 main employment centers
+        TAZ = pd.read_csv('./2. Data/Basile data/TAZ_amp_2013_proj_centro2.csv') #Number of jobs per Transport Zone (TZ)
+        TAZ2013_centre = pd.read_csv('./2. Data/Basile data/TAZ_final.csv') #The 44 main employment centers
     
         #Coordinates of employment centers
         listou = copy.deepcopy(TAZ2013_centre.TAZ2013_centre)

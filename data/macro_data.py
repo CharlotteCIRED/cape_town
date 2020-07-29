@@ -22,7 +22,7 @@ class MacroData:
         method = 'linear' #Méthode pour faire les interpolations (linear ou spline)
 
         # %% Evolution de l'inflation, des revenus, des taux d'intéret et du prix du carburant, de la population et des revenus
-        scenario = pd.read_csv('./2. Data/Scenario_CAPE_TOWN_Claus_inputs.csv', sep = ";")
+        scenario = pd.read_csv('./2. Data/Basile data/Scenario_CAPE_TOWN_Claus_inputs.csv', sep = ";")
         macro_spline_inflation = interp1d(scenario.year_infla[~np.isnan(scenario.inflation_base_2010)] - param["year_begin"], scenario.inflation_base_2010[~np.isnan(scenario.inflation_base_2010)], method)
         macro_spline_revenu = interp1d(scenario.Year[~np.isnan(scenario.Inc_avg)] - param["year_begin"], scenario.Inc_avg[~np.isnan(scenario.Inc_avg)], method)
         macro_revenu_ref = macro_spline_revenu(param["annee_reference"] - param["year_begin"])
@@ -33,7 +33,7 @@ class MacroData:
         macro_revenu = macro_spline_revenu(np.transpose(t))
         
         # %% Distribution of incomes
-        income_2011 = pd.read_csv('./2. Data/Income_distribution_2011.csv')
+        income_2011 = pd.read_csv('./2. Data/Basile data/Income_distribution_2011.csv')
         income_distribution = numpy.matlib.repmat(income_2011.INC_med, len(scenario.Year), 1) #Revenu médian des 12 classes de ménages pour toutes les années étudiées
         income_distribution[scenario.Year > 2011, :] = income_distribution[scenario.Year > 2011, :] * numpy.matlib.repmat(np.transpose([macro_spline_inflation(scenario.Year[scenario.Year > 2011] - param["year_begin"]) / macro_spline_inflation(2011 - param["year_begin"])]), 1, np.size(income_distribution, axis = 1))
         macro_spline_inc_distribution = interp1d(scenario.Year[~np.isnan(scenario.Inc_avg)] - param["year_begin"], np.transpose(income_distribution[~np.isnan(scenario.Inc_avg), 1:12]), method)

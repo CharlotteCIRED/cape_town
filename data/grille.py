@@ -27,7 +27,7 @@ class SimulGrid:
     def create_grid(self):
         """Create a n*n grid with center in 0"""
         
-        grid = pd.read_csv('./2. Data/grid_NEDUM_Cape_Town_500.csv', sep = ';')
+        grid = pd.read_csv('./2. Data/Basile data/grid_NEDUM_Cape_Town_500.csv', sep = ';')
 
         #Coordonnées réelle en South African CRS : CAPE_NO_19 en km.
         coord_horiz = grid.X/1000

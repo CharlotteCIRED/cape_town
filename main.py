@@ -56,22 +56,22 @@ macro_data = MacroData()
 macro_data.import_macro_data(param, option, t)
 
 #Calibration du modèle (monocentrique)
-option2 = copy.deepcopy(option)
-option2["polycentric"] = 0
-poly = ImportEmploymentData()
-poly.import_employment_data(grid, param, option2, macro_data, t)
-trans = TransportData()
-trans.charges_temps_polycentrique_CAPE_TOWN_3(option2, grid, macro_data, param, poly, t)
-amenity = Amenity()
-amenity.amenity_calibration_parameters_v3(grid,param, macro_data, poly, option2, trans, data_courbe, land, 2011)
-land.amenite = amenity.estimated_amenities / np.mean(amenity.estimated_amenities)
-param["coeff_beta"] = amenity.coeff_beta
-param["coeff_alpha"] = 1 - param.coeff_beta
-param["basic_q"] = amenity.basic_q
-param["coeff_b"] = amenity.coeff_b
-param["coeff_a"] = 1 - amenity.coeff_b
-param["coeff_grandA"] = amenity.coeff_grandA * 1.3
-
+#option2 = copy.deepcopy(option)
+#option2["polycentric"] = 0
+#poly = ImportEmploymentData()
+#poly.import_employment_data(grid, param, option2, macro_data, t)
+#trans = TransportData()
+#trans.charges_temps_polycentrique_CAPE_TOWN_3(option2, grid, macro_data, param, poly, t)
+#amenity = Amenity()
+#amenity.amenity_calibration_parameters_v3(grid,param, macro_data, poly, option2, trans, data_courbe, land, 2011)
+#land.amenite = amenity.estimated_amenities / np.mean(amenity.estimated_amenities)
+#param["coeff_beta"] = amenity.coeff_beta
+#param["coeff_alpha"] = 1 - param.coeff_beta
+#param["basic_q"] = amenity.basic_q
+#param["coeff_b"] = amenity.coeff_b
+#param["coeff_a"] = 1 - amenity.coeff_b
+#param["coeff_grandA"] = amenity.coeff_grandA * 1.3
+land.amenite = np.ones(24014)
 #Job centers, transportation data
 poly = ImportEmploymentData()
 poly.import_employment_data(grid, param, option, macro_data, t)

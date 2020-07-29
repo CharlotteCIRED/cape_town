@@ -13,7 +13,7 @@ import numpy.matlib
 from scipy.interpolate import griddata
 
 def data_SP_vers_grille(data_SP, data_courbe_SP_Code, grille):  
-    grid_intersect = pd.read_csv('./2. Data/grid_SP_intersect.csv', sep = ';')   
+    grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP_intersect.csv', sep = ';')   
     data_grille = np.zeros(len(grille.dist))   
     for index in range(0, len(grille.dist)):       
         ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])
@@ -35,7 +35,7 @@ def data_SP_vers_grille(data_SP, data_courbe_SP_Code, grille):
 
 def data_SP_vers_grille_alternative(data_SP, data_courbe_SP_Code, grille):
     
-    grid_intersect = pd.read_csv('./2. Data/grid_SP_intersect.csv', sep = ';')  
+    grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP_intersect.csv', sep = ';')  
     data_grille = np.zeros(len(grille.dist))   
     for index in range(0, len(grille.dist)): 
         ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])
@@ -47,7 +47,7 @@ def data_SP_vers_grille_alternative(data_SP, data_courbe_SP_Code, grille):
 
 def data_SP_2001_vers_grille_alternative(data_SP, data_courbe_SP_2001_Code, grille):
     #pour des variables extensives
-    grid_intersect = pd.read_csv('./2. Data/grid_SP2001_intersect.csv', sep = ';') 
+    grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP2001_intersect.csv', sep = ';') 
     data_grille = np.zeros(len(grille.dist)) 
     for index in range(0, len(grille.dist)):
         ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])     
@@ -58,7 +58,7 @@ def data_SP_2001_vers_grille_alternative(data_SP, data_courbe_SP_2001_Code, gril
 
 def data_CensusSAL_vers_grille(data_SAL, data_courbe_SAL_Code_conversion, grille):
     #to transform data at the Census 2011 SAL level to data at the grid level
-    grid_intersect = pd.read_csv('./2. Data/grid_SAL_intersect.csv', sep = ';') 
+    grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SAL_intersect.csv', sep = ';') 
     data_grille = np.zeros(len(grille.dist))
 
     for index in range (0, len(grille.dist)):
@@ -76,21 +76,22 @@ def data_CensusSAL_vers_grille(data_SAL, data_courbe_SAL_Code_conversion, grille
     return data_grille
 
 def import_data_SAL_landuse(grille):
-    sal_ea_inters = pd.read_csv('./2. Data/SAL_EA_inters_data_landuse.csv', sep = ';') 
+    sal_ea_inters = pd.read_csv('./2. Data/Basile data/SAL_EA_inters_data_landuse.csv', sep = ';') 
     urb = sal_ea_inters.Collective_living_quarters + sal_ea_inters.Formal_residential + sal_ea_inters.Informal_residential
     non_urb = sal_ea_inters.Commercial + sal_ea_inters.Farms + sal_ea_inters.Industrial + sal_ea_inters.Informal_residential + sal_ea_inters.Parks_and_recreation + sal_ea_inters.Small_Holdings + sal_ea_inters.Vacant
     return urb /(urb+non_urb)
 
 def prix2_polycentrique3(t_transport, cout_generalise, param, t):
-    for index in range(0, len(t)):
-        index1, index2, ponder1, ponder2 = cree_ponder(t[index] + param["year_begin"], t_transport)
-        sortie = np.zeros((2, 2, 2))
+    for index in range(0, t.size):
+        index1, index2, ponder1, ponder2 = cree_ponder(t + param["year_begin"], t_transport)
+        sortie = np.zeros((cout_generalise.shape[0], cout_generalise.shape[1], t.size))
         sortie[:, :, index] = (ponder1 * cout_generalise[:, :, index1]) + (ponder2 * cout_generalise[:, :, index2])    
     return sortie
 
 def cree_ponder(valeur,vecteur):
     vecteur_centre = vecteur - valeur
-    valeur_mini, index = min(np.abs(vecteur_centre))
+    valeur_mini = min(np.abs(vecteur_centre))
+    index = np.argmin(np.abs(vecteur_centre))
 
     if valeur_mini == 0:
         index1 = index
@@ -126,7 +127,7 @@ def griddata_hier(a,b,c,x,y):
 def import_donnees_metro_poly(poly, grille,param):
     """ import and estimate transport time by the metro """
     
-    metro_station = pd.read_csv('./2. Data/metro_station_poly.csv', sep = ';')   
+    metro_station = pd.read_csv('./2. Data/Basile data/metro_station_poly.csv', sep = ';')   
     station_line_time = metro_station[["Bellvill1_B", "Bellvill2_M", "Bellvill3_S", "Bonteheuwel1_C", "Bonteheuwel2_B", "Bonteheuwel3_K", "Capeflats", "Malmesbury", "Simonstown", "Worcester"]]
     duration = np.zeros((len(metro_station.ID_station), len(metro_station.ID_station)))
     
@@ -177,14 +178,13 @@ def import_donnees_metro_poly(poly, grille,param):
     return distance_metro, duration_metro
 
 def revenu2_polycentrique(macro, param, option, grille, poly, t_trafic, index):
-    t = np.transpose(t_trafic)
-
     #evolution du revenu...
     #revenu_tmp = interp1d(np.array(poly.annee) - param["year_begin"], poly.avg_inc, T)
     revenu_tmp = interp1d(np.array(poly.annee) - param["year_begin"], np.transpose(poly.avg_inc))
-    revenu = np.zeros(((len(poly.Jx), len(grille.dist), 7)))
-    temp = np.matlib.repmat(pd.DataFrame(revenu_tmp(t_trafic[index])), 1, (grille.dist).shape))
-    revenu[:,:, index] = np.reshape(temp, 4, (grille.dist).shape)))
+    #revenu = np.zeros(((len(poly.Jx), len(grille.dist)))) #Pour chaque classe de ménage et chaque centre d'emploi, habitant en chaque point de la ville, chaque année
+    #temp = np.matlib.repmat(pd.DataFrame(revenu_tmp(t_trafic[index])), 1, (grille.dist).shape)
+    #revenu[:,:, index] = np.reshape(temp, 4, (grille.dist).shape)
+    revenu = revenu_tmp(t_trafic[index])
     return revenu
 
 '''
