@@ -17,25 +17,25 @@ def transaction_cost(param,macro,revenu):
         """ On suppose que le coût de transaction évolue proportionnellement au revenu. """
         return (revenu / macro.revenu_ref) * param["transaction_cost2011"]
 
-def housing_construct(R,option,housing_limite_ici,construction_ici,param,transaction_cost_in,loyer_de_ref,interest_rate1,Profit_limite):
+def housing_construct(R,option,housing_limite_ici,construction_ici,param,transaction_cost_in,rent_reference,interest_rate1):
     """ Calculates the housing construction as a function of rents """
 
     housing = construction_ici ** (1/param["coeff_a"])*(param["coeff_b"]/interest_rate1)**(param["coeff_b"]/param["coeff_a"])*(R)**(param["coeff_b"]/param["coeff_a"])
     housing[R < transaction_cost_in] = 0
     #housing(R < transaction_cost_in + param.tax_urban_edge_mat) = 0;
     housing[np.isnan(housing)] = 0
-    housing = np.min(housing, (np.ones(size(housing,1),1) * housing_limite_ici))
+    housing = np.minimum(housing, (np.ones(housing.shape[0]) * np.min(housing_limite_ici)))
     
     #To add the construction on Mitchells_Plan
-    housing = max(housing, param["housing_mini"])
+    housing = np.maximum(housing, param["housing_mini"])
     
     return housing
 
-def housing_backyard(R, grille, param, basic_q_formal, revenu1, prix_tc_RDP):
+def housing_backyard(R, grille, param, basic_q_formal, income1, price_trans_RDP):
     """ Calculates the backyard available for construction as a function of rents """
 
-    housing = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (revenu1[0,:] - prix_tc_RDP) / ((param["backyard_size"]) * R)
-    housing[revenu1[0,:] < prix_tc_RDP] = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (revenu1[0, revenu1[0,:] < prix_tc_RDP]) / ((param["backyard_size"]) * R(revenu1[0,:] < prix_tc_RDP))
+    housing = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (income1[0,:] - price_trans_RDP) / ((param["backyard_size"]) * R)
+    housing[income1[0,:] < price_trans_RDP[0,:]] = param["coeff_alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["coeff_beta"] * (income1[0, income1[0,:] < price_trans_RDP[0,:]]) / ((param["backyard_size"]) * R[income1[0,:] < price_trans_RDP[0,:]])
     housing[R == 0] = 0
     housing = np.min(housing, 1)
     housing = np.max(housing, 0)
@@ -83,12 +83,12 @@ def utilite(Ro,revenu,basic_q,param):
 def utilite_amenite(Z,hous, param, amenite, revenu,Ro):
     
     if Ro == 0:
-        utili = Z ** (param["coeff_alpha"]) * (np.transpose(hous) - param["basic_q"]) ** param["coeff_beta"]
+        utili = Z ** (param["coeff_alpha"]) * ((hous) - param["basic_q"]) ** param["coeff_beta"]
     else:
         Ro = np.transpose(np.ones(len(revenu[1,:]), 1) * Ro)
         utili = param["coeff_alpha"] ** param["coeff_alpha"] * param["coeff_beta"] ** param["coeff_beta"] * np.sign(revenu - param["basic_q"] * Ro) * np.abs(revenu- param["basic_q"] * Ro) / (Ro ** param["coeff_beta"])
 
-    utili = utili * np.transpose(amenite)
+    utili = utili * amenite
     utili[revenu==0] = 0
     return utili
 

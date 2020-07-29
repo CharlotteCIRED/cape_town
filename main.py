@@ -82,8 +82,8 @@ trans.charges_temps_polycentrique_CAPE_TOWN_3(option, grid, macro_data, param, p
 
 #Solver
 print('*** Initial state ***')
-Uo_init = 0
-etat_initial = NEDUM_basic_need_informal(t[0],trans,option,land,grid,macro_data,param,poly,Uo_init,param["housing_in"])
+Uo_perso = 0
+etat_initial = NEDUM_basic_need_informal(t[0], trans, option, land, grid, macro_data, param, poly, Uo_perso)
 print('*** End of static resolution ***')
 
 #Initial statistics
