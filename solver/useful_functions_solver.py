@@ -20,8 +20,8 @@ def transaction_cost(param,macro,revenu):
 def housing_construct(R,option,housing_limite_ici,construction_ici,param,transaction_cost_in,rent_reference,interest_rate1):
     """ Calculates the housing construction as a function of rents """
 
-    housing = construction_ici ** (1/param["coeff_a"])*(param["coeff_b"]/interest_rate1)**(param["coeff_b"]/param["coeff_a"])*(R)**(param["coeff_b"]/param["coeff_a"])
-    housing[R < transaction_cost_in] = 0
+    housing = construction_ici ** (1/param["coeff_a"])*(param["coeff_b"]/interest_rate1)**(param["coeff_b"]/param["coeff_a"])*(R)**(param["coeff_b"]/param["coeff_a"]) #Equation 6
+    housing[(R < transaction_cost_in) & (~np.isnan(R))] = 0
     #housing(R < transaction_cost_in + param.tax_urban_edge_mat) = 0;
     housing[np.isnan(housing)] = 0
     housing = np.minimum(housing, (np.ones(housing.shape[0]) * np.min(housing_limite_ici)))
@@ -86,7 +86,7 @@ def utilite_amenite(Z,hous, param, amenite, revenu,Ro):
         utili = Z ** (param["coeff_alpha"]) * ((hous) - param["basic_q"]) ** param["coeff_beta"]
     else:
         Ro = np.transpose(np.ones(len(revenu[1,:]), 1) * Ro)
-        utili = param["coeff_alpha"] ** param["coeff_alpha"] * param["coeff_beta"] ** param["coeff_beta"] * np.sign(revenu - param["basic_q"] * Ro) * np.abs(revenu- param["basic_q"] * Ro) / (Ro ** param["coeff_beta"])
+        utili = param["coeff_alpha"] ** param["coeff_alpha"] * param["coeff_beta"] ** param["coeff_beta"] * np.sign(revenu - param["basic_q"] * Ro) * np.abs(revenu- param["basic_q"] * Ro) / (Ro ** param["coeff_beta"]) #Equation C2
 
     utili = utili * amenite
     utili[revenu==0] = 0

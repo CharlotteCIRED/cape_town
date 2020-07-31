@@ -19,6 +19,7 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     """ Works both for formal or informal housing """
     
     Ro = solus((income1[:,0]), (np.transpose(Uo))) #D = 18 #n = 55 #XX et YY doivent être (55, 18)
+    Ro[np.isnan(Ro)] = 0
     Ro[Ro < 0] = 0
 
     basic_q_formal = param["basic_q"]
@@ -58,7 +59,7 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     #Estimate housing
     if type_housing == 'formal':
         #hous = param["coeff_beta"] * (income1[quel_mat] - price_trans[quel_mat]) / R + param["coeff_alpha"] * param["basic_q"]
-        hous = param["coeff_beta"] * (income1[quel_mat] - price_trans[:,:,0][quel_mat]) / np.matlib.repmat(R, m = 18, n = 1) + param["coeff_alpha"] * param["basic_q"]
+        hous = param["coeff_beta"] * (income1[quel_mat] - price_trans[:,:,0][quel_mat]) / R + param["coeff_alpha"] * param["basic_q"] #Demande de logements correspondant au loyer
     elif type_housing == 'backyard':
         hous = param["size_shack"] * np.ones((4194))
     elif type_housing == 'informal':
@@ -68,9 +69,9 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     #depense_mat = np.ones(np.transpose(Ro).shape) * (hous * R)
     hous_formal_mat = hous
     depense_mat = (hous * R)
-    Z = (income1) - (trans_tmp_cout_generalise[:,:,0]) - (depense_mat)
+    Z = (income1) - (trans_tmp_cout_generalise[:,:,0]) - (depense_mat) #Dépenses en bien composite
     Z[Z<=0] = 0
-    utility = utilite_amenite(Z, hous_formal_mat, param, amenite, income1, 0)
+    utility = utilite_amenite(Z, hous_formal_mat, param, amenite, income1, 0) #On n'a que des nan parce que les logements sont tous plus petits que le basic_Q
     utility_max = np.transpose(Uo) #l'utilit? "max" est constante par centre
     utility_max_mat = np.matlib.repmat(utility_max, m = len(R), n = 1)
     utility = (np.abs(utility)) ** 0.01
@@ -78,14 +79,14 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     param_lambda = param["lambda"] * np.ones(utility.shape) #lambda(1:20,:)=lambda(1:20,:)*0.96;%pour 0.01
     proba_log = -(utility_max_mat / np.transpose(utility) - 1) * np.transpose(param_lambda)
     
-    lieu_zero = np.isnan(proba_log)
+    lieu_zero = np.isnan(proba_log) | np.isinf(proba_log)
     proba_log[lieu_zero] = -100000
 
     medi = np.max(proba_log, 0)
     medi[np.isnan(medi)] = 0
     medi[np.isinf(medi)] = 0
     medi = np.matlib.repmat(medi, R_mat.shape[1], 1)
-    proba_log = proba_log - medi
+    proba_log = proba_log - medi #Probabilité que les gens d'un centre d'emploi veuillent habiter à tel endroit
 
     #Number of jobs
     proba_log = proba_log + np.log(np.transpose(multi_proba))
@@ -103,7 +104,7 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     #Normalization of the proba
     proba1 = np.sum(proba,0)
     proba = proba / np.matlib.repmat(proba1, (R_mat).shape[1], 1)
-    proba[np.matlib.repmat(proba1, (R_mat).shape[1], 1) == 0] = 0
+    proba[np.matlib.repmat(proba1, (R_mat).shape[1], 1) == 0] = 0 #Probabilité que les employés de chaque zone d'emploi habitent dans chaque cellule de la grille
 
     #Housing construction
     if type_housing == 'formal':
@@ -126,7 +127,7 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
 
     people_travaille = people_init_vrai * proba
     people_travaille[np.isnan(people_travaille)] = 0
-    job_simul = np.sum(people_travaille, axis = 1)
+    job_simul = np.sum(people_travaille, axis = 1) #Entre people_init_vrai et job_simul, il y a des gens qui se sont perdus ^^'
     
     if type_housing == 'formal':
         R = np.maximum(R, transaction_cost_in)

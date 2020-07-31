@@ -72,6 +72,8 @@ macro_data.import_macro_data(param, option, t)
 #param["coeff_a"] = 1 - amenity.coeff_b
 #param["coeff_grandA"] = amenity.coeff_grandA * 1.3
 land.amenite = np.ones(24014)
+param["amenite_backyard"] = 0.74
+param["amenite_settlement"] = 0.7
 #Job centers, transportation data
 poly = ImportEmploymentData()
 poly.import_employment_data(grid, param, option, macro_data, t)
@@ -82,8 +84,8 @@ trans.charges_temps_polycentrique_CAPE_TOWN_3(option, grid, macro_data, param, p
 
 #Solver
 print('*** Initial state ***')
-Uo_perso = 0
-etat_initial = NEDUM_basic_need_informal(t[0], trans, option, land, grid, macro_data, param, poly, Uo_perso)
+Uo_perso = 1000
+etat_initial_erreur, etat_initial_job_simul, etat_initial_people_housing_type, etat_initial_people_center, etat_initial_people1, etat_initial_hous1, etat_initial_housing1, etat_initial_rent1, etat_initial_R_mat, etat_initial_capital_land1, etat_initial_revenu_in, etat_initial_limite1, etat_initial_matrice_J, etat_initial_mult, etat_initial_utility, etat_initial_impossible_population = NEDUM_basic_need_informal(t[0], trans, option, land, grid, macro_data, param, poly, Uo_perso)
 print('*** End of static resolution ***')
 
 #Initial statistics
