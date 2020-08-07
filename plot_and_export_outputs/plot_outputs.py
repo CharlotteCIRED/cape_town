@@ -8,8 +8,8 @@ Created on Thu Jul  2 10:08:43 2020
 def grid_map(x, grid):
     ''' Plot the results on the grid '''
     
-    map = plt.scatter(grid.coord_horiz, 
-                      grid.coord_vert, 
+    map = plt.scatter(grid.horiz_coord, 
+                      grid.vert_coord, 
                       s=None,
                       c=x,
                       marker='.')

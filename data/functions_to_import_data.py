@@ -12,70 +12,70 @@ from scipy.interpolate import interp1d
 import numpy.matlib
 from scipy.interpolate import griddata
 
-def data_SP_vers_grille(data_SP, data_courbe_SP_Code, grille):  
+def SP_to_grid_2011_1(data_SP, SP_Code, grid):  
     grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP_intersect.csv', sep = ';')   
-    data_grille = np.zeros(len(grille.dist))   
-    for index in range(0, len(grille.dist)):       
-        ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])
+    data_grid = np.zeros(len(grid.dist))   
+    for index in range(0, len(grid.dist)):  
+        intersect = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grid.ID[index]])
         area_exclu = 0       
-        for i in range(0, len(ici)):     
-            if len(data_SP[data_courbe_SP_Code == ici[i]]) == 0:                      
-                area_exclu = area_exclu + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])])
+        for i in range(0, len(intersect)):     
+            if len(data_SP[SP_Code == intersect[i]]) == 0:                      
+                area_exclu = area_exclu + sum(grid_intersect.Area[(grid_intersect.ID_grille == grid.ID[index]) & (grid_intersect.SP_CODE == intersect[i])])
             else:
-                data_grille[index] = data_grille[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe_SP_Code == ici[i]]       
-        if area_exclu > 0.9 * sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]):
-            data_grille[index] = np.nan         
+                data_grid[index] = data_grid[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grid.ID[index]) & (grid_intersect.SP_CODE == intersect[i])]) * data_SP[SP_Code == intersect[i]]       
+        if area_exclu > 0.9 * sum(grid_intersect.Area[grid_intersect.ID_grille == grid.ID[index]]):
+            data_grid[index] = np.nan         
         else:
-            if (sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]) - area_exclu) > 0:
-                data_grille[index] = data_grille[index] / (sum(grid_intersect.Area[grid_intersect.ID_grille == grille.ID[index]]) - area_exclu)
+            if (sum(grid_intersect.Area[grid_intersect.ID_grille == grid.ID[index]]) - area_exclu) > 0:
+                data_grid[index] = data_grid[index] / (sum(grid_intersect.Area[grid_intersect.ID_grille == grid.ID[index]]) - area_exclu)
             else:
-               data_grille[index] = np.nan 
+               data_grid[index] = np.nan 
                 
-    return data_grille
+    return data_grid
 
-def data_SP_vers_grille_alternative(data_SP, data_courbe_SP_Code, grille):
+def SP_to_grid_2011_2(data_SP, SP_Code, grid):
     
     grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP_intersect.csv', sep = ';')  
-    data_grille = np.zeros(len(grille.dist))   
-    for index in range(0, len(grille.dist)): 
-        ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])
-        for i in range(0, len(ici)): 
-            if len(data_SP[data_courbe_SP_Code == ici[i]]) != 0:  
-                data_grille[index] = data_grille[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe_SP_Code == ici[i]] / sum(grid_intersect.Area[grid_intersect.SP_CODE == ici[i]])
+    data_grid = np.zeros(len(grid.dist))   
+    for index in range(0, len(grid.dist)): 
+        intersect = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grid.ID[index]])
+        for i in range(0, len(intersect)): 
+            if len(data_SP[SP_Code == intersect[i]]) != 0:  
+                data_grid[index] = data_grid[index] + sum(grid_intersect.Area[(grid_intersect.ID_grille == grid.ID[index]) & (grid_intersect.SP_CODE == intersect[i])]) * data_SP[SP_Code == intersect[i]] / sum(grid_intersect.Area[grid_intersect.SP_CODE == intersect[i]])
 
-    return data_grille
+    return data_grid
 
-def data_SP_2001_vers_grille_alternative(data_SP, data_courbe_SP_2001_Code, grille):
+def SP_to_grid_2001(data_SP, Code_SP_2001, grid):
     #pour des variables extensives
     grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP2001_intersect.csv', sep = ';') 
-    data_grille = np.zeros(len(grille.dist)) 
-    for index in range(0, len(grille.dist)):
-        ici = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grille.ID[index]])     
-        for i in range(0, len(ici)): 
-            if len(data_SP[data_courbe_SP_2001_Code == ici[i]]) != 0:
-                data_grille[index] = data_grille[index] + sum(grid_intersect.area_intersection[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.SP_CODE == ici[i])]) * data_SP[data_courbe_SP_2001_Code == ici[i]] / sum(grid_intersect.area_intersection[grid_intersect.SP_CODE == ici[i]])
-    return data_grille
+    data_grid = np.zeros(len(grid.dist)) 
+    for index in range(0, len(grid.dist)):
+        intersect = np.unique(grid_intersect.SP_CODE[grid_intersect.ID_grille == grid.ID[index]])     
+        for i in range(0, len(intersect)): 
+            if len(data_SP[Code_SP_2001 == intersect[i]]) != 0:
+                data_grid[index] = data_grid[index] + sum(grid_intersect.area_intersection[(grid_intersect.ID_grille == grid.ID[index]) & (grid_intersect.SP_CODE == intersect[i])]) * data_SP[Code_SP_2001 == intersect[i]] / sum(grid_intersect.area_intersection[grid_intersect.SP_CODE == intersect[i]])
+    return data_grid
 
-def data_CensusSAL_vers_grille(data_SAL, data_courbe_SAL_Code_conversion, grille):
+def SAL_to_grid(data_SAL, SAL_Code_conversion, grid):
     #to transform data at the Census 2011 SAL level to data at the grid level
     grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SAL_intersect.csv', sep = ';') 
-    data_grille = np.zeros(len(grille.dist))
+    data_grid = np.zeros(len(grid.dist))
 
-    for index in range (0, len(grille.dist)):
-        ici = np.unique(grid_intersect.OBJECTID_1[grid_intersect.ID_grille == grille.ID[index]])
-        if len(ici) == 0:
-            data_grille[index] = np.nan
+    for index in range (0, len(grid.dist)):
+        intersect = np.unique(grid_intersect.OBJECTID_1[grid_intersect.ID_grille == grid.ID[index]])
+        if len(intersect) == 0:
+            data_grid[index] = np.nan
         else:
-            for i in range(0, len(ici)):
-                if len(data_SAL[data_courbe_SAL_Code_conversion == ici[i]]) > 0:
-                    data_grille[index] = data_grille[index] + sum(grid_intersect.Area_inter[(grid_intersect.ID_grille == grille.ID[index]) & (grid_intersect.OBJECTID_1 == ici[i])]) * data_SAL[data_courbe_SAL_Code_conversion == ici[i]]
-            if sum(grid_intersect.Area_inter[grid_intersect.ID_grille == grille.ID[index]]) < 150000:
-                data_grille[index] = np.nan
+            for i in range(0, len(intersect)):
+                if len(data_SAL[SAL_Code_conversion == intersect[i]]) > 0:
+                    data_grid[index] = data_grid[index] + sum(grid_intersect.Area_inter[(grid_intersect.ID_grille == grid.ID[index]) & (grid_intersect.OBJECTID_1 == intersect[i])]) * data_SAL[SAL_Code_conversion == intersect[i]]
+            if sum(grid_intersect.Area_inter[grid_intersect.ID_grille == grid.ID[index]]) < 150000:
+                data_grid[index] = np.nan
             else:
-                data_grille[index] = data_grille[index] / (sum(grid_intersect.Area_inter[grid_intersect.ID_grille == grille.ID[index]]))
-    return data_grille
+                data_grid[index] = data_grid[index] / (sum(grid_intersect.Area_inter[grid_intersect.ID_grille == grid.ID[index]]))
+    return data_grid
 
-def import_data_SAL_landuse(grille):
+def import_SAL_land_use(grid):
     sal_ea_inters = pd.read_csv('./2. Data/Basile data/SAL_EA_inters_data_landuse.csv', sep = ';') 
     urb = sal_ea_inters.Collective_living_quarters + sal_ea_inters.Formal_residential + sal_ea_inters.Informal_residential
     non_urb = sal_ea_inters.Commercial + sal_ea_inters.Farms + sal_ea_inters.Industrial + sal_ea_inters.Informal_residential + sal_ea_inters.Parks_and_recreation + sal_ea_inters.Small_Holdings + sal_ea_inters.Vacant

@@ -47,11 +47,11 @@ print("\n*** Load data ***\n")
 t = np.array([0, 1, 2, 3, 4, 5, 6]) #to go up to 2017
 grid = SimulGrid()
 grid.create_grid()
-data_courbe = ImportDataCourbe()
-data_courbe.import_data(grid, param)
+households_data = ImportHouseholdsData()
+households_data.import_data(grid, param)
 land = Land()
-land.import_coeff_land_CAPE_TOWN2(grid, option, param, data_courbe)
-param = add_construction_parameters(param, data_courbe, land, grid)   
+land.import_land_use(grid, option, param, households_data)
+param = add_construction_parameters(param, households_data, land, grid)   
 macro_data = MacroData()
 macro_data.import_macro_data(param, option, t)
 
@@ -72,13 +72,11 @@ macro_data.import_macro_data(param, option, t)
 #param["coeff_a"] = 1 - amenity.coeff_b
 #param["coeff_grandA"] = amenity.coeff_grandA * 1.3
 land.amenite = np.ones(24014)
-param["amenite_backyard"] = 0.74
-param["amenite_settlement"] = 0.7
 #Job centers, transportation data
-poly = ImportEmploymentData()
-poly.import_employment_data(grid, param, option, macro_data, t)
+job = ImportEmploymentData()
+job.import_employment_data(grid, param, option, macro_data, t)
 trans = TransportData()
-trans.charges_temps_polycentrique_CAPE_TOWN_3(option, grid, macro_data, param, poly, t) 
+trans.import_transport_data(option, grid, macro_data, param, job, t) 
 
 # %% Initial state
 
