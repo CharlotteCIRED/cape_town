@@ -56,22 +56,22 @@ macro_data = MacroData()
 macro_data.import_macro_data(param, option, t)
 
 #Calibration du modèle (monocentrique)
-#option2 = copy.deepcopy(option)
-#option2["polycentric"] = 0
-#poly = ImportEmploymentData()
-#poly.import_employment_data(grid, param, option2, macro_data, t)
-#trans = TransportData()
-#trans.charges_temps_polycentrique_CAPE_TOWN_3(option2, grid, macro_data, param, poly, t)
-#amenity = Amenity()
-#amenity.amenity_calibration_parameters_v3(grid,param, macro_data, poly, option2, trans, data_courbe, land, 2011)
-#land.amenite = amenity.estimated_amenities / np.mean(amenity.estimated_amenities)
-#param["coeff_beta"] = amenity.coeff_beta
-#param["coeff_alpha"] = 1 - param.coeff_beta
-#param["basic_q"] = amenity.basic_q
-#param["coeff_b"] = amenity.coeff_b
-#param["coeff_a"] = 1 - amenity.coeff_b
-#param["coeff_grandA"] = amenity.coeff_grandA * 1.3
-land.amenite = np.ones(24014)
+option2 = copy.deepcopy(option)
+option2["polycentric"] = 0
+job = ImportEmploymentData()
+job.import_employment_data(grid, param, option2, macro_data, t)
+trans = TransportData()
+trans.import_transport_data(option2, grid, macro_data, param, job, t)
+amenity = Amenity()
+amenity.amenity_calibration_parameters_v3(grid, param, macro_data, job, option2, trans, households_data, land, 2011)
+land.amenite = amenity.estimated_amenities / np.mean(amenity.estimated_amenities)
+param["coeff_beta"] = amenity.coeff_beta
+param["coeff_alpha"] = 1 - param.coeff_beta
+param["basic_q"] = amenity.basic_q
+param["coeff_b"] = amenity.coeff_b
+param["coeff_a"] = 1 - amenity.coeff_b
+param["coeff_grandA"] = amenity.coeff_grandA * 1.3
+
 #Job centers, transportation data
 job = ImportEmploymentData()
 job.import_employment_data(grid, param, option, macro_data, t)
@@ -87,7 +87,7 @@ etat_initial_erreur, etat_initial_job_simul, etat_initial_people_housing_type, e
 print('*** End of static resolution ***')
 
 #Initial statistics
-stat_initiales = compute_stat_initiales_formal_informal(trans,land,grid,macro_data,param,option,etat_initial,poly,t[0])
+stat_initiales = compute_stat_initiales_formal_informal(trans, land, grid, macro_data, param,option,etat_initial,poly,t[0])
 
 #Plot outputs
 trace_courbes_formal(grid, etat_initial, stat_initiales, macro_data, data_courbe, land, param, macro, option, t[0])

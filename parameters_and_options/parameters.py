@@ -33,7 +33,7 @@ def choice_param():
     param["housing_constraint_1"] = 0.5
     param["housing_constraint_2"] = 0.5
     param["shack_size"] = 20 #Size of a backyard shack (m2)
-    param["rdp_size"] = 40 #Size of a RDP house (m2)
+    param["RDP_size"] = 40 #Size of a RDP house (m2)
     param["backyard_size"] = 70 #size of the backyard of a RDP house (m2)
     param["future_backyard_size"] = param["backyard_size"]
     param["amenity_backyard"] = 0.38

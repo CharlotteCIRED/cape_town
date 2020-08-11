@@ -19,7 +19,8 @@ class ImportHouseholdsData:
         
     def import_data(self, grid, param):
         
-        # %% Recensement 2011
+        # %% Census 2011: Income and dwellings data 2011
+        
         dwellings_data_2011 = pd.read_csv('./2. Data/Basile data/sub-places-dwelling-statistics.csv', sep = ';')
         
         #Data at the SP level (administrative division)
@@ -62,14 +63,15 @@ class ImportHouseholdsData:
         informal_grid_2011 = SP_to_grid_2011_2(informal_SP_2011, Code_SP_2011, grid)
         formal_grid_2011 = SP_to_grid_2011_2(total_dwellings_SP_2011 - informal_SP_2011 - backyard_SP_2011, Code_SP_2011, grid)
         
-        # %% income distribution 2011
+        # %% Income distribution 2011
+        
         income_2011 = pd.read_csv('./2. Data/Basile data/Income_distribution_2011.csv', sep=",")
         median_income_2011 = income_2011.INC_med #Median income for each income group
         income_groups_limits = np.zeros(param["nb_of_income_classes"]) #Min. income for each income class
         for j in range(0, param["nb_of_income_classes"]):
             income_groups_limits[j] = np.max(income_2011.INC_max.iloc[param["income_distribution"] == j])
  
-        # %% Recensement 2001
+        # %% Census 2001: Income and dwellings data 2001
         income_2001 = pd.read_csv('./2. Data/Basile data/Census_2001_income.csv', sep = ";")
         
         #Define a grid with SP data
@@ -97,11 +99,12 @@ class ImportHouseholdsData:
         total_number_per_income_bracket = ([sum(np.array(income_12_class_SP_2001)[CT_SP_2001, :]), sum(np.array(income_12_class_SP_2011)[CT_SP_2011, :])])
         
         # %% Dwelling types 2001
-        dwellings_data_2011 = pd.read_csv('./2. Data/Basile data/Census_2001_dwelling_type.csv', sep = ';')
         
-        formal = dwellings_data_2011.House_brick_structure_separate_stand + dwellings_data_2011.Flat_in_block + dwellings_data_2011.semi_detached_house + dwellings_data_2011.House_flat_in_backyard + dwellings_data_2011.Room_flatlet_shared_property + dwellings_data_2011.Caravan_tent + dwellings_data_2011.Ship_boat
-        backyard = dwellings_data_2011.Informal_dwelling_in_backyard
-        informal = dwellings_data_2011.Traditional_dwelling_traditional_materials + dwellings_data_2011.Informal_dwelling_NOT_backyard
+        dwellings_data_2001 = pd.read_csv('./2. Data/Basile data/Census_2001_dwelling_type.csv', sep = ';')
+        
+        formal = dwellings_data_2001.House_brick_structure_separate_stand + dwellings_data_2001.Flat_in_block + dwellings_data_2001.semi_detached_house + dwellings_data_2001.House_flat_in_backyard + dwellings_data_2001.Room_flatlet_shared_property + dwellings_data_2001.Caravan_tent + dwellings_data_2001.Ship_boat
+        backyard = dwellings_data_2001.Informal_dwelling_in_backyard
+        informal = dwellings_data_2001.Traditional_dwelling_traditional_materials + dwellings_data_2001.Informal_dwelling_NOT_backyard
 
         formal_SP_2001 = np.zeros(len(Code_SP_2001))
         backyard_SP_2001 = np.zeros(len(Code_SP_2001))
@@ -118,6 +121,7 @@ class ImportHouseholdsData:
         informal_grid_2001 = SP_to_grid_2001(informal_SP_2001, Code_SP_2001, grid)
 
         # %% Real estate data 2012
+        
         #Sales data were previously treaty and aggregated at the SP level on R
         sale_price = pd.read_csv('./2. Data/Basile data/SalePriceStat_SP.csv', sep = ',')
         
@@ -130,7 +134,8 @@ class ImportHouseholdsData:
         sale_price_year = np.array([2001, 2011])
         sale_price_SP[sale_price_SP == 0] = np.nan
         
-        # %% Données SAL 2011 de la ville du Cap
+        # %% Density/Dwellings: Cape Town's data
+        
         sal_coord = pd.read_csv('./2. Data/Basile data/Res_SAL_coord.csv', sep = ';')
         
         #Define a grid for SAL data
@@ -170,11 +175,12 @@ class ImportHouseholdsData:
         formal_dens_HFA_SP = np.zeros(len(Code_SP_2011))
         for i in range(0, len(Code_SP_2011)):
             area_urb_from_EA_SP[i] = sum(ea_data.ALBERS_ARE[(ea_data.SP_CODE == Code_SP_2011[i]) & ((ea_data.EA_TYPE_C == 1) | (ea_data.EA_TYPE_C == 6) )]) #Surface en km2 des EA type 1 et 6
-            formal_dens_HFA_SP[i] = sum(SAL_total_formal_HFA[SP_Code_SAL == Code_SP_2011[i]] / 1000000) / area_urb_from_EA_SP[i] #Densités de logements dans les EA de type 1 et 6
+            formal_dens_HFA_SP[i] = sum(SAL_total_formal_HFA[Code_SP_SAL == Code_SP_2011[i]] / 1000000) / area_urb_from_EA_SP[i] #Densités de logements dans les EA de type 1 et 6
         formal_dens_HFA_SP[(area_urb_from_EA_SP / np.transpose(area_SP_2011)) < 0.2] = np.nan
         formal_dens_HFA_SP[formal_dens_HFA_SP > 3] = np.nan
 
         # %% Residential construction data at the SP level
+        
         sp_res_data = pd.read_csv('./2. Data/Basile data/SP_res_data.csv', sep = ';')
         SP_CODE_SAL = copy.deepcopy(sp_res_data.SP_CODE)
         floor_factor_SP = 1000000 * np.ones(len(Code_SP_2011))
@@ -190,15 +196,10 @@ class ImportHouseholdsData:
         share_urbanised_SP[share_urbanised_SP == 1000000] = np.nan
         dwelling_size_SP[dwelling_size_SP == 1000000] = np.nan
 
-
         # %% RDP houses (= subsidized housing) from GV2012
+        
         rdp_houses = pd.read_csv('./2. Data/Basile data/GV2012_grid_RDP_count2.csv', sep = ';')
-        GV_count_RDP = np.transpose(rdp_houses.count_RDP)
-        GV_area_RDP = np.transpose(rdp_houses.area_RDP)
-
-        # %% Household size as a function of income groups (Data from 2011 Census, Claus' estimation)
-        household_size_group = np.array([6.556623149, 1.702518978, 0.810146856, 1.932265222])
-    
+        
         # %% Put it into a DataCourbe structure
         self.Code_SP_2011 = Code_SP_2011 #Administrative divisions, 1046
         self.X_SP_2011 = X_SP_2011 #X coordinates, 1046
@@ -276,7 +277,7 @@ class ImportHouseholdsData:
         self.floor_factor_SP = floor_factor_SP #Floor factor, 1046
         self.share_urbanised_SP = share_urbanised_SP #Urbanised share, 1046
         self.dwelling_size_SP = dwelling_size_SP      #Dwelling size, 1046
-        self.GV_count_RDP = GV_count_RDP #Number of subsidized housing, 24014
-        self.GV_area_RDP = GV_area_RDP #Surface of subsidized housing, 24014
-        self.household_size_group = household_size_group #Household size as a function of income groups
+        self.GV_count_RDP = np.transpose(rdp_houses.count_RDP) #Number of subsidized housing, 24014
+        self.GV_area_RDP = np.transpose(rdp_houses.area_RDP) #Surface of subsidized housing, 24014
+        self.household_size_group = np.array([6.556623149, 1.702518978, 0.810146856, 1.932265222]) #Household size as a function of income groups
 
