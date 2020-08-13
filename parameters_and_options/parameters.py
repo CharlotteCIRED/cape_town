@@ -50,6 +50,7 @@ def choice_param():
     param["transaction_cost2011"] = 700 #Rands per m2 per year
     param["household_size"] = [1.14, 1.94, 1.94, 1.94] #Household size
     param["lambda"] = 1500
+    param["cost_of_time"] = 1
     
     #Solver parameters
     param["max_iter"] = 400
@@ -78,7 +79,6 @@ def choice_param():
     #param["facteur_logit"] = 3
     #param["limite_temps"] = 20.2000;
     #param["moyenne_pente_smooth"] = 3;
-    #param["prix_temps"] = 1
     #param["prix_temps2"] = param["prix_temps"] * 0.6
     #param["prix_tsport"] = 60
     

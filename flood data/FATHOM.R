@@ -8,7 +8,7 @@ library(raster)
 library(exactextractr)
 
 grid = readOGR("C:/Users/Charlotte Liotta/Desktop/cape_town/data_Cape_Town/data_maps/grid_reference_500.shp")
-grid <- spTransform(grid, CRS(proj4string(FU_10yr)))
+grid <- spTransform(grid, CRS(proj4string(FU_5yr)))
 
 FU_5yr = raster('C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/South Africa/fluvial_undefended/FU_1in5.tif')
 FU_5yr = crop(FU_5yr, grid)
@@ -266,6 +266,24 @@ prop_inondable_50yr_grid = data.frame(matrix(unlist(prop_inondable_50yr_grid))[,
 P_50yr_grid$prop_inondable = prop_inondable_50yr_grid[,1]
 colnames(P_50yr_grid) = c("flood_depth", "prop_flood_prone")
 write.xlsx(P_50yr_grid, 'C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/P_50yr.xlsx')
+
+P_75yr = raster('C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/South Africa/pluvial/P_1in75.tif')
+P_75yr = crop(P_75yr, grid)
+P_75yr <- reclassify(P_75yr, cbind(-9999, NA))
+P_75yr <- reclassify(P_75yr, cbind(999, NA))
+cellStats(P_75yr, 'min')
+cellStats(P_75yr, 'max')
+cellStats(P_75yr, 'mean')
+prop_inondable_75yr = P_75yr
+prop_inondable_75yr <- reclassify(prop_inondable_75yr, cbind(NA, 0))
+prop_inondable_75yr <- reclassify(prop_inondable_75yr, cbind(0.005, 10, 1))
+P_75yr_grid = extract(P_75yr, grid, fun=mean, weights = TRUE, na.rm=TRUE)
+P_75yr_grid = data.frame(matrix(unlist(P_75yr_grid))[,1])
+prop_inondable_75yr_grid = extract(prop_inondable_75yr, grid, fun=mean, weights = TRUE, na.rm=TRUE)
+prop_inondable_75yr_grid = data.frame(matrix(unlist(prop_inondable_75yr_grid))[,1])
+P_75yr_grid$prop_inondable = prop_inondable_100yr_grid[,1]
+colnames(P_75yr_grid) = c("flood_depth", "prop_flood_prone")
+write.xlsx(P_75yr_grid, 'C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/P_75yr.xlsx')
 
 P_100yr = raster('C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/South Africa/pluvial/P_1in100.tif')
 P_100yr = crop(P_100yr, grid)

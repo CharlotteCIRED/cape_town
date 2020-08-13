@@ -14,7 +14,7 @@ from solver.useful_functions_solver import *
 
 def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, 
                 construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, coeff_land_ici, 
-                coeff_landmax, poly, amenite, solus, uti, type_housing):
+                coeff_landmax, job, amenite, solus, uti, type_housing):
     
     """ Works both for formal or informal housing """
     
@@ -28,20 +28,21 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
 
     #Estimate bid rents using precalculate matrix
     if type_housing == 'formal':
-        R_mat = solus(income1 - trans_tmp_cout_generalise[:,:,0], (np.transpose(np.matlib.repmat(Uo, n = 1, m = income1.shape[1]))/ (amenite)))
-        R_mat[poly.formal == 0, :] = 0
+        R_mat = solus(income1 - trans_tmp_cout_generalise, (np.transpose(np.matlib.repmat(Uo, n = 1, m = income1.shape[1]))/ (amenite)))
+        R_mat[job.formal == 0, :] = 0
     elif type_housing == 'backyard':
         amenite = amenite * param["amenite_backyard"]
         #R_mat = definit_R_informal(Uo, param, trans_tmp_cout_generalise, income1, amenite)
         R_mat = 1 / param["size_shack"] * (income1 - trans_tmp_cout_generalise[:,:,0] - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["size_shack"] - param["basic_q"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"])) 
-        R_mat[poly.backyard == 0,:] = 0
+        R_mat[job.backyard == 0,:] = 0
     elif type_housing == 'informal':
         amenite = amenite * param["amenite_settlement"]
         R_mat = 1 / param["size_shack"] * (income1 - trans_tmp_cout_generalise[:,:,0] - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["size_shack"] - param["basic_q"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"]))        
-        R_mat[poly.settlement == 0,:] = 0
+        R_mat[job.settlement == 0,:] = 0
 
     #R_mat = single(R_mat)
     R_mat[R_mat < 0] = 0
+    R_mat[np.isnan(R_mat)] = 0
 
     #Estimate rents
     R = np.nanmax(R_mat, 0) #quel is the type of households with the highest bid-rent in each location
@@ -49,7 +50,7 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     
     #Estimate dwelling size
     quel_mat = np.matlib.repmat(np.zeros(18, 'bool'), n = 1, m = price_trans.shape[1])
-    for i in range(0, 4194):
+    for i in range(0, sum(selected_pixels)):
         for j in range(0, 18):
             if quel[i] == j:
                 quel_mat[i,j] = np.ones(1, 'bool')
@@ -59,17 +60,19 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     #Estimate housing
     if type_housing == 'formal':
         #hous = param["coeff_beta"] * (income1[quel_mat] - price_trans[quel_mat]) / R + param["coeff_alpha"] * param["basic_q"]
-        hous = param["coeff_beta"] * (income1[quel_mat] - price_trans[:,:,0][quel_mat]) / R + param["coeff_alpha"] * param["basic_q"] #Demande de logements correspondant au loyer
+        hous = param["coeff_beta"] * ((income1[quel_mat] - price_trans[quel_mat]) / R) + param["coeff_alpha"] * param["basic_q"] #Demande de logements correspondant au loyer
     elif type_housing == 'backyard':
         hous = param["size_shack"] * np.ones((4194))
     elif type_housing == 'informal':
         hous = param["size_shack"] * np.ones((4194))
 
+    hous[hous <  0] = 0
+    hous[np.isinf(hous)] = np.nan
     #hous_formal_mat = np.ones(np.transpose(Ro).shape) * hous
     #depense_mat = np.ones(np.transpose(Ro).shape) * (hous * R)
     hous_formal_mat = hous
     depense_mat = (hous * R)
-    Z = (income1) - (trans_tmp_cout_generalise[:,:,0]) - (depense_mat) #Dépenses en bien composite
+    Z = (income1) - (trans_tmp_cout_generalise) - (depense_mat) #Dépenses en bien composite
     Z[Z<=0] = 0
     utility = utilite_amenite(Z, hous_formal_mat, param, amenite, income1, 0) #On n'a que des nan parce que les logements sont tous plus petits que le basic_Q
     utility_max = np.transpose(Uo) #l'utilit? "max" est constante par centre
@@ -116,7 +119,7 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
             housing = 1000000 * np.ones((4194))
             housing[R == 0] = 0
         elif option["double_storey_shacks"] == 1:
-            housing = 1000000 * housing_informal(R, grid, param, poly, income1, price_trans, proba)
+            housing = 1000000 * housing_informal(R, grid, param, job, income1, price_trans, proba)
 
     limite = (income1 > price_trans[:,:,0]) & (np.transpose(proba) > 0) & (~np.isnan(price_trans[:,:,0])) & (R_mat > 0)
     proba = np.transpose(proba) * limite

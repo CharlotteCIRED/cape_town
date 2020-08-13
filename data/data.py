@@ -111,7 +111,7 @@ class ImportHouseholdsData:
         informal_SP_2001 = np.zeros(len(Code_SP_2001))
     
         for i in range(0, len(Code_SP_2001)):
-            match = (dwellings_data_2011.SP_Code == Code_SP_2001[i])
+            match = (dwellings_data_2001.SP_Code == Code_SP_2001[i])
             formal_SP_2001[i] = formal[match]
             backyard_SP_2001[i] = backyard[match]
             informal_SP_2001[i] = informal[match]

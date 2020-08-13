@@ -172,7 +172,7 @@ class ImportEmploymentData:
         self.classes = poly_classes #Income groups that we keep, for each year
         self.corresp = poly_corresp #Code TAZ auquel ça correspond
         self.Jval_pour_garde = poly_Jval_pour_garde
-        self.Jval = poly_Jval #Number of hosueholds of each income group per employment center and per year
+        self.Jval = poly_Jval #Number of households of each income group per employment center and per year
         self.formal = np.array([1, 1, 1, 1]) #Select which income class can live in formal settlements
         self.backyard = np.array([1, 1, 0, 0]) #Select which income class can live in backyard settlements
         self.settlement = np.array([1, 1, 0, 0]) #Select which income class can live in informal settlements

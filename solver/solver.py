@@ -14,22 +14,21 @@ from solver.compute_outputs_solver import *
 from solver.useful_functions_solver import *
 from data.functions_to_import_data import *
 
-def NEDUM_basic_need_informal(t_ici, trans, option, land, grid, macro_data, param, poly, Uo_perso):
+def NEDUM_basic_need_informal(t_ici, trans, option, land, grid, macro_data, param, job, Uo_perso):
     """ Solver with a Stone-Geary utility function, n income classes and informal housing (settlement and backyard shacks) """
 
     t_ici = np.array(t_ici)
-    revenu_tmp = interp1d((np.array(poly.annee) - param["year_begin"]), np.transpose(poly.avg_inc))
-    revenu_tmp = revenu_tmp(t_ici)
-    income1 = np.zeros([len(poly.Jx), len(grid.dist), 1])
+    revenu_tmp = interp1d((np.array(job.annee) - param["baseline_year"]), np.transpose(job.avg_inc))
+    revenu_tmp = revenu_tmp(t_ici) #Income per income class and employment center
+    income1 = np.zeros([len(job.Jx), len(grid.dist), 1])
     for index in range(0, 1):
-        temp = np.matlib.repmat(revenu_tmp, 1, grid.dist.shape[0])
-        income1[:,:,index] = np.reshape(temp, (len(poly.Jx), len(grid.dist)), order = 'F')  #income for the year
+        income1[:,:,index] = np.transpose(np.matlib.repmat(revenu_tmp, grid.dist.shape[0], 1)) #Matrix of incomes per income class and employment centers at each location
     income_avg = macro_data.spline_revenu(t_ici) #average income for the year of the simulation
     
-    #price_trans = prix2_polycentrique2(trans, param, t_ici) #Final price for transport
-    price_trans = prix2_polycentrique3(trans.t_transport, trans.cout_generalise, param, t_ici)
+    #price_trans = prix2_polycentrique2(trans, param, t_ici)
+    price_trans = prix2_polycentrique3(trans.t_transport, trans.cout_generalise, param, t_ici) #Transport price from each grid cell to each employment center
     price_trans[price_trans == 0] = np.nan
-    price_time = prix2_polycentrique3(trans.t_transport, trans.prix_temps, param, t_ici) #Price associated with the time spent commuting
+    price_time = prix2_polycentrique3(trans.t_transport, trans.prix_temps, param, t_ici) #Transport opportunity price from each grid cell to each employment center
     price_time[price_time == 0] = np.nan
     
     #Interest rate
@@ -42,23 +41,24 @@ def NEDUM_basic_need_informal(t_ici, trans, option, land, grid, macro_data, para
     RDP_total = macro_data.spline_RDP(t_ici) #336000 households live in RDP in 2016
 
     #Construction coefficient
-    construction_ici = (income_avg / macro_data.revenu_ref) ** (- param["coeff_b"]) * param["coeff_grandA"] #Correspond en fait exactement au paramètres A (0.69)
+    construction_ici = (income_avg / macro_data.revenu_ref) ** (- param["coeff_b"]) * param["coeff_A"] #Correspond en fait exactement au paramètre A
 
     #Evolution of coeff_land
     land_backyard = land.spline_land_backyard(t_ici) #Les zones disponibles pour le backyarding et le logement subventionnées sont données
     land_RDP = land.spline_land_RDP(t_ici)
 
-    coeff_land_private = (land.spline_land_constraints(t_ici) - land_backyard - land.informal - land_RDP) * land.coeff_landmax #Par défaut, toute zone qui n'est pas occupée par des logements informels ou subventionnés est disponible pour le logement formel
-    coeff_land_private[coeff_land_private < 0] = 0
-    coeff_land_backyard = land_backyard * land.coeff_landmax_backyard
-    coeff_land_RDP = land_RDP
-    coeff_land_settlement = land.informal * land.coeff_landmax_settlement
-    land.coeff_land = np.array([coeff_land_private, coeff_land_backyard, coeff_land_settlement, coeff_land_RDP])
+    #coeff_land_private = (land.spline_land_constraints(t_ici) - land_backyard - land.informal - land_RDP) * land.coeff_landmax #Par défaut, toute zone qui n'est pas occupée par des logements informels ou subventionnés est disponible pour le logement formel
+    #coeff_land_private = (np.ones(len(land_backyard)) - land_backyard - land.informal - land_RDP) * param["max_land_use"] #Par défaut, toute zone qui n'est pas occupée par des logements informels ou subventionnés est disponible pour le logement formel
+    #coeff_land_private[coeff_land_private < 0] = 0
+    #coeff_land_backyard = land_backyard * param["max_land_use_backyard"]
+    #coeff_land_RDP = land_RDP
+    #coeff_land_settlement = land.informal * param["max_land_use_settlement"]
+    #land.coeff_land = np.array([coeff_land_private, coeff_land_backyard, coeff_land_settlement, coeff_land_RDP])
     land.RDP_houses_estimates = land.spline_estimate_RDP(t_ici)
 
     #Limit of housing construction
     #housing_limite_ici = housing_limite_evol(land, option, param, t_ici)
-    housing_limite_ici = land.housing_limite
+    housing_limite_ici = land.housing_limit
     #if nargin<10
         #housing_in = zeros(1,length(grid.dist));
 
@@ -71,72 +71,78 @@ def NEDUM_basic_need_informal(t_ici, trans, option, land, grid, macro_data, para
         #param.tax_urban_edge_mat(land.urban_edge == 0) = param.tax_urban_edge .* interest_rate1;
 
     #Estimation of the limit profit
-    housing = construction_ici ** (1 / param["coeff_a"]) * (param["coeff_b"] / (interest_rate1 + param["depreciation_h"])) ** (param["coeff_b"] / param["coeff_a"]) * (rent_reference * 12 - transaction_cost_in) ** (param["coeff_b"] / param["coeff_a"]) * (rent_reference * 12 > transaction_cost_in)
+    housing = construction_ici ** (1 / param["coeff_a"]) * (param["coeff_b"] / (interest_rate1 + param["depreciation_rate"])) ** (param["coeff_b"] / param["coeff_a"]) * (rent_reference * 12 - transaction_cost_in) ** (param["coeff_b"] / param["coeff_a"]) * (rent_reference * 12 > transaction_cost_in)
     capital_land = (housing / construction_ici) ** (1 / param["coeff_b"])
-    Profit_limite = housing * (rent_reference * 12 - transaction_cost_in * 12) - capital_land * (interest_rate1 + param["depreciation_h"])
+    Profit_limite = housing * (rent_reference * 12 - transaction_cost_in * 12) - capital_land * (interest_rate1 + param["depreciation_rate"])
 
     #Computation of the initial state
-    etat_initial_erreur, etat_initial_job_simul, etat_initial_people_housing_type, etat_initial_people_center, etat_initial_people1, etat_initial_hous1, etat_initial_housing1, etat_initial_rent1, etat_initial_R_mat, etat_initial_capital_land1, etat_initial_revenu_in, etat_initial_limite1, etat_initial_matrice_J, etat_initial_mult, etat_initial_utility, etat_initial_impossible_population = compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param, t_ici, rent_reference, housing_limite_ici, income1, income_avg, price_trans, interest_rate1, population, transaction_cost_in, construction_ici, poly, Profit_limite, Uo_perso, price_time, RDP_total)
+    etat_initial_erreur, etat_initial_job_simul, etat_initial_people_housing_type, etat_initial_people_center, etat_initial_people1, etat_initial_hous1, etat_initial_housing1, etat_initial_rent1, etat_initial_R_mat, etat_initial_capital_land1, etat_initial_revenu_in, etat_initial_limite1, etat_initial_matrice_J, etat_initial_mult, etat_initial_utility, etat_initial_impossible_population = compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param, t_ici, rent_reference, housing_limite_ici, income1, income_avg, price_trans, interest_rate1, population, transaction_cost_in, construction_ici, job, Profit_limite, Uo_perso, price_time, RDP_total)
 
     return etat_initial_erreur, etat_initial_job_simul, etat_initial_people_housing_type, etat_initial_people_center, etat_initial_people1, etat_initial_hous1, etat_initial_housing1, etat_initial_rent1, etat_initial_R_mat, etat_initial_capital_land1, etat_initial_revenu_in, etat_initial_limite1, etat_initial_matrice_J, etat_initial_mult, etat_initial_utility, etat_initial_impossible_population
 
-def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param, t_ici, rent_reference, housing_limite_ici, income1, income_avg, price_trans, interest_rate1, population, transaction_cost_in, construction_ici, poly, Profit_limite, Uo_perso, price_time, RDP_total):
+def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param, t_ici, rent_reference, housing_limite_ici, income1, income_avg, price_trans, interest_rate1, population, transaction_cost_in, construction_ici, job, Profit_limite, Uo_perso, price_time, RDP_total):
     
-    max_iter_t = param["max_iter_t"]
+    max_iter_t = param["max_iter"]
     precision = param["precision"]
 
-    #Preparation of the variables
-    interest_rate1 = interest_rate1 + param["depreciation_h"]
+    # %% Preparation of the variables
+    
+    #Interest rate
+    interest_rate1 = interest_rate1 + param["depreciation_rate"]
     t_temp = copy.deepcopy(t_ici)
     param["revenu_ref"] = macro_data.revenu_ref #Je crois que c'est le revenu moyen sur plusieurs années
-    Jval = interp1d(poly.annee, np.transpose(poly.Jval[range(0, len(poly.annee)),:]))
-    Jval = Jval(t_temp + param["year_begin"]) #Répartition de la population par centre d'emploi
-    avg_inc = interp1d(poly.annee, np.transpose(poly.avg_inc[range(0, len(poly.annee)), :]))
-    avg_inc = avg_inc(t_temp + param["year_begin"]) #income in each employment center
-    poly.income_mult = avg_inc / macro_data.spline_revenu(t_temp) #Inégalités de revenu
+    
+    #Number of households per employment center
+    Jval = interp1d(job.annee, np.transpose(job.Jval[range(0, len(job.annee)),:])) #nb of households per employment center per year
+    Jval = Jval(t_temp + param["baseline_year"]) #Répartition de la population par centre d'emploi
+    
+    #Average income per employment center
+    avg_inc = interp1d(job.annee, np.transpose(job.avg_inc[range(0, len(job.annee)), :]))
+    avg_inc = avg_inc(t_temp + param["baseline_year"]) #income in each employment center
+    
+    #Income inequalities
+    job.income_mult = avg_inc / macro_data.spline_revenu(t_temp) #Inégalités de revenu
 
     #Class of each center and housing type
-    formal_temp = poly.formal #Les 4 classes de ménages peuvent habiter dans le formel
-    backyard_temp = poly.backyard #Seules les 2 classes de ménages les plus pauvres peuvent habiter dans des logements informels
-    settlement_temp = poly.settlement
-    poly.formal = np.zeros((len(avg_inc)))
-    poly.backyard = np.zeros((len(avg_inc)))
-    poly.settlement = np.zeros((len(avg_inc)))
-    poly.classes = poly.classes[1, :]
+    formal_temp = job.formal #Les 4 classes de ménages peuvent habiter dans le formel
+    backyard_temp = job.backyard #Seules les 2 classes de ménages les plus pauvres peuvent habiter dans des logements informels
+    settlement_temp = job.settlement
+    job.formal = np.zeros((len(avg_inc)))
+    job.backyard = np.zeros((len(avg_inc)))
+    job.settlement = np.zeros((len(avg_inc)))
+    job.classes = job.classes[1, :]
 
-    for i in range(0, param["multiple_class"]):
+    #In which types of dwelling do live the workers of each employment center?
+    for i in range(0, param["nb_of_income_classes"]):
         if formal_temp[i] == 1:
-            poly.formal[poly.classes == i] = 1   
+            job.formal[job.classes == i] = 1   
         if backyard_temp[i] == 1:
-            poly.backyard[poly.classes == i] = 1
+            job.backyard[job.classes == i] = 1
         if settlement_temp[i] == 1:
-            poly.settlement[poly.classes == i] = 1 #Dans quels types de logements peuvent habiter les gens qui travaillent dans les centres d'emploi ?
+            job.settlement[job.classes == i] = 1 #Dans quels types de logements peuvent habiter les gens qui travaillent dans les centres d'emploi ?
 
-    #Ajust the population to remove the population in RDP
-    
+    #Ajust the population to remove the population in RDP   
     ratio = population / np.sum(Jval)  
     Jval = Jval * ratio
     RDP_total = RDP_total * ratio
-    Jval[poly.classes == 0] = Jval[poly.classes == 0] - RDP_total * Jval[poly.classes == 0] / sum(Jval[poly.classes == 0])
-    Jx = poly.Jx
-    Jy = poly.Jy
+    Jval[job.classes == 0] = Jval[job.classes == 0] - (RDP_total * Jval[job.classes == 0] / sum(Jval[job.classes == 0]))
+    Jx = job.Jx
+    Jy = job.Jy
     J = np.array([Jval, Jx, Jy]) #Centres d'emploi et leurs coordonnées
     #J = single(J)
 
-    #We define multi_proba (useful in the solver) here because it is faster
+    #Number of households per employment center, in a matrix shape
     multi_proba = np.matlib.repmat(np.transpose(J[0,:]), 1, len(grid.dist))
     multi_proba = np.reshape(multi_proba, (len(grid.dist), len(J[0,:])))
 
     #Commuting price for RDP households (useful for Backyarding)
     #Note: Households in RDP are allocated randomly to job centers
-    a = np.empty((4, 24014, 1))
-    for i in range(0,4): #Attention, je crois que le 4 correspond au fait qu'il y a 4 centres d'emploi accessibles à la première classe de ménages
-        a[i, :] = Jval[poly.classes == 0][i] * price_trans[poly.classes == 0, :][0]
-    price_trans_RDP = np.sum(a, 0) / sum(Jval[poly.classes == 0])
+    price_trans_RDP = np.sum(np.matlib.repmat(Jval[job.classes == 0], 24014, 1) * np.transpose(price_trans[job.classes == 0, :]), 1) / sum(Jval[job.classes == 0])
+    #prix_tc_RDP = sum(Jval(poly.class == 1)'.* prix_tc(poly.class == 1,:),1) ./ sum(Jval(poly.class == 1)) ;
 
     #Amenities
     amenite = land.amenite
-    amenite = np.ones((len(income1),1 )) * amenite #We transform amenities in a matrix with as many lines as employment centers
+    amenite = np.ones((len(income1),1)) * amenite #We transform amenities in a matrix with as many lines as employment centers
 
     #Useful functions
     uti = lambda Ro, revenu : utilite(Ro, revenu, param["basic_q"], param) #EQUATION C.2
@@ -163,7 +169,7 @@ def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param,
     solus = lambda x, y : (griddata((XX,YY), ZZ ** param["coeff_beta"], (x, y))) ** (1 / param["coeff_beta"])
 
     #smaller grid for speed
-    selected_pixels = (sum(land.coeff_land) > 0)
+    selected_pixels = (np.sum(land.coeff_land, 0) > 0)
     land.coeff_land = land.coeff_land[:, selected_pixels]
     grid_temp = copy.deepcopy(grid)
     grid.dist = grid.dist[selected_pixels]
@@ -171,7 +177,7 @@ def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param,
     multi_proba = np.transpose(multi_proba[selected_pixels, :])
     price_trans = price_trans[:, selected_pixels]
     price_trans_RDP = price_trans_RDP[selected_pixels]
-    price_time = price_time[:, selected_pixels, 0]
+    price_time = price_time[:, selected_pixels]
     param["housing_mini"] = param["housing_mini"][selected_pixels]
     param["housing_in"] = param["housing_in"][selected_pixels]
     #param.tax_urban_edge_mat = param.tax_urban_edge_mat[selected_pixels]
@@ -219,13 +225,13 @@ def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param,
     R_mat = np.empty((3, 18, 4194))
     
     #Formal housing
-    job_simul[index_t, 0, :], rent[index_t, 0, :], people[index_t, 0, :], people_travaille[0, :, :], housing[0, :], hous[0, :], R_mat[0, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[0,:], 1, poly, amenite, solus, uti, 'formal')
+    job_simul[index_t, 0, :], rent[index_t, 0, :], people[index_t, 0, :], people_travaille[0, :, :], housing[0, :], hous[0, :], R_mat[0, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[0,:], 1, job, amenite, solus, uti, 'formal')
     
     #Backyard housing
-    job_simul[index_t, 1, :], rent[index_t, 1, :], people[index_t, 1, :], people_travaille[1,:,:], housing[1,:], hous[1,:], R_mat[1,:,:] = coeur_poly2(Uo[index_t,:], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[1,:], land.coeff_landmax_backyard, poly, amenite, solus, uti, 'backyard')
+    job_simul[index_t, 1, :], rent[index_t, 1, :], people[index_t, 1, :], people_travaille[1,:,:], housing[1,:], hous[1,:], R_mat[1,:,:] = coeur_poly2(Uo[index_t,:], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[1,:], land.coeff_landmax_backyard, job, amenite, solus, uti, 'backyard')
 
     #Informal settlements
-    job_simul[index_t, 2, :], rent[index_t, 2, :], people[index_t, 2, :], people_travaille[2, :, :], housing[2, :], hous[2, :], R_mat[2,:,:] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[2, :], land.coeff_landmax_settlement, poly, amenite, solus, uti, 'informal')
+    job_simul[index_t, 2, :], rent[index_t, 2, :], people[index_t, 2, :], people_travaille[2, :, :], housing[2, :], hous[2, :], R_mat[2,:,:] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[2, :], land.coeff_landmax_settlement, job, amenite, solus, uti, 'informal')
 
     #Total simulated population
     job_simul_total[index_t, :] = np.sum(job_simul[index_t, :, :], 0)
@@ -266,13 +272,13 @@ def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param,
         param["facteur_convergence"] = param["facteur_convergence"] * (1 - 0.8 * index_t / max_iter_t)
         
         #Formal housing
-        job_simul[index_t, 0, :], rent[index_t, 0, :], people[index_t, 0, :], people_travaille[0, :, :], housing[0, :], hous[0, :], R_mat[0, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[0, :], 1, poly, amenite, solus, uti, 'formal')
+        job_simul[index_t, 0, :], rent[index_t, 0, :], people[index_t, 0, :], people_travaille[0, :, :], housing[0, :], hous[0, :], R_mat[0, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[0, :], 1, job, amenite, solus, uti, 'formal')
      
         #Backyard housing
-        job_simul[index_t, 1, :], rent[index_t, 1, :], people[index_t, 1, :], people_travaille[1, :, :], housing[1, :], hous[1, :], R_mat[1, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[1, :], land.coeff_landmax_backyard, poly, amenite, solus, uti, 'backyard')
+        job_simul[index_t, 1, :], rent[index_t, 1, :], people[index_t, 1, :], people_travaille[1, :, :], housing[1, :], hous[1, :], R_mat[1, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[1, :], land.coeff_landmax_backyard, job, amenite, solus, uti, 'backyard')
 
         #Informal settlements
-        job_simul[index_t, 2, :], rent[index_t, 2, :], people[index_t, 2, :], people_travaille[2, :, :], housing[2, :], hous[2, :], R_mat[2, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[2, :], land.coeff_landmax_settlement, poly, amenite, solus, uti, 'informal')
+        job_simul[index_t, 2, :], rent[index_t, 2, :], people[index_t, 2, :], people_travaille[2, :, :], housing[2, :], hous[2, :], R_mat[2, :, :] = coeur_poly2(Uo[index_t, :], param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, land.coeff_land[2, :], land.coeff_landmax_settlement, job, amenite, solus, uti, 'informal')
      
     
         #Total simulated population
@@ -297,7 +303,7 @@ def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param,
         #objective population (basic need effect)
         if ((sum(Uo[index_t, :] < 1) > 0) & (max((job_simul_total[index_t, J[1,:] != 0]) / Jval[J[1,:] != 0] - 1) < precision)):
             impossible_population[Uo[index_t, :] < 1] = np.ones(1, 'bool')
-        if (sum(impossible_population) + sum(np.abs(job_simul_total[index_t, J[1,:] != 0] / Jval[J[1,:] != 0] - 1) < precision)) >= len(poly.income_mult): #If we have to stop the solver
+        if (sum(impossible_population) + sum(np.abs(job_simul_total[index_t, J[1,:] != 0] / Jval[J[1,:] != 0] - 1) < precision)) >= len(job.income_mult): #If we have to stop the solver
             if sum(impossible_population) == number_impossible_mem:
                 condition_possible = np.zeros(1, 'bool') #We exit the solver
             else:
@@ -320,9 +326,9 @@ def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param,
     RDP_people = land.RDP_houses_estimates * RDP_total / sum(land.RDP_houses_estimates)
     RDP_construction = np.matlib.repmat(param["RDP_size"] / (param["RDP_size"] + param["backyard_size"]), 1, len(grid_temp.dist)) * 1000000
     RDP_dwelling_size = np.matlib.repmat(param["RDP_size"], 1, len(grid_temp.dist))
-    people_travaille_with_RDP = np.zeros((4, len(poly.income_mult), len(grid_temp.dist)))
+    people_travaille_with_RDP = np.zeros((4, len(job.income_mult), len(grid_temp.dist)))
     people_travaille_with_RDP[0:3, :, selected_pixels] = people_travaille
-    people_travaille_with_RDP[3, poly.classes == 0, :] = np.matlib.repmat(RDP_people, sum(poly.classes == 0), 1) * np.transpose(np.matlib.repmat((Jval[poly.classes == 0]), 24014, 1)) / sum(Jval[poly.classes == 0])
+    people_travaille_with_RDP[3, job.classes == 0, :] = np.matlib.repmat(RDP_people, sum(job.classes == 0), 1) * np.transpose(np.matlib.repmat((Jval[job.classes == 0]), 24014, 1)) / sum(Jval[job.classes == 0])
 
     #Outputs of the solver
     #Employment centers
@@ -349,7 +355,7 @@ def compute_equilibrium_polycentrique_1_6(option, land, grid, macro_data, param,
     rent_tmp_export[:, selected_pixels] = rent_tmp
     rent_tmp_export[:, selected_pixels == 0] = np.nan
     etat_initial_rent1 = np.array([rent_tmp_export, np.zeros(len(grid_temp.dist))])
-    R_mat_export = np.zeros((3, len(poly.Jx), len(grid_temp.dist)))
+    R_mat_export = np.zeros((3, len(job.Jx), len(grid_temp.dist)))
     R_mat_export[:,:,selected_pixels] = R_mat
     R_mat_export[:,:,selected_pixels == 0] = np.nan
     etat_initial_R_mat = R_mat_export
