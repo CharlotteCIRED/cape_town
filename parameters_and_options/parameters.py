@@ -36,8 +36,8 @@ def choice_param():
     param["RDP_size"] = 40 #Size of a RDP house (m2)
     param["backyard_size"] = 70 #size of the backyard of a RDP house (m2)
     param["future_backyard_size"] = param["backyard_size"]
-    param["amenity_backyard"] = 0.38
-    param["amenity_settlement"] = 0.37
+    param["amenity_backyard"] = 0.74
+    param["amenity_settlement"] = 0.70
     param["double_storey_shacks"] = 0
 
     #Multiple income classes

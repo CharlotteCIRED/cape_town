@@ -281,7 +281,7 @@ P_75yr_grid = extract(P_75yr, grid, fun=mean, weights = TRUE, na.rm=TRUE)
 P_75yr_grid = data.frame(matrix(unlist(P_75yr_grid))[,1])
 prop_inondable_75yr_grid = extract(prop_inondable_75yr, grid, fun=mean, weights = TRUE, na.rm=TRUE)
 prop_inondable_75yr_grid = data.frame(matrix(unlist(prop_inondable_75yr_grid))[,1])
-P_75yr_grid$prop_inondable = prop_inondable_100yr_grid[,1]
+P_75yr_grid$prop_inondable = prop_inondable_75yr_grid[,1]
 colnames(P_75yr_grid) = c("flood_depth", "prop_flood_prone")
 write.xlsx(P_75yr_grid, 'C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/P_75yr.xlsx')
 
@@ -302,3 +302,23 @@ prop_inondable_100yr_grid = data.frame(matrix(unlist(prop_inondable_100yr_grid))
 P_100yr_grid$prop_inondable = prop_inondable_100yr_grid[,1]
 colnames(P_100yr_grid) = c("flood_depth", "prop_flood_prone")
 write.xlsx(P_100yr_grid, 'C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/P_100yr.xlsx')
+
+P_100yr = raster('C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/South Africa/fluvial_defended/FD_1in1000.tif')
+P_100yr = crop(P_100yr, grid)
+P_100yr <- reclassify(P_100yr, cbind(-9999, NA))
+P_100yr <- reclassify(P_100yr, cbind(999, NA))
+cellStats(P_100yr, 'min')
+cellStats(P_100yr, 'max')
+cellStats(P_100yr, 'mean')
+prop_inondable_100yr = P_100yr
+prop_inondable_100yr <- reclassify(prop_inondable_100yr, cbind(NA, 0))
+prop_inondable_100yr <- reclassify(prop_inondable_100yr, cbind(0.005, 10, 1))
+P_100yr_grid = extract(P_100yr, grid, fun=mean, weights = TRUE, na.rm=TRUE)
+P_100yr_grid = data.frame(matrix(unlist(P_100yr_grid))[,1])
+prop_inondable_100yr_grid = extract(prop_inondable_100yr, grid, fun=mean, weights = TRUE, na.rm=TRUE)
+prop_inondable_100yr_grid = data.frame(matrix(unlist(prop_inondable_100yr_grid))[,1])
+P_100yr_grid$prop_inondable = prop_inondable_100yr_grid[,1]
+colnames(P_100yr_grid) = c("flood_depth", "prop_flood_prone")
+write.xlsx(P_100yr_grid, 'C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/FD_1000yr.xlsx')
+
+

@@ -31,12 +31,12 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
         R_mat = solus(income1 - trans_tmp_cout_generalise, (np.transpose(np.matlib.repmat(Uo, n = 1, m = income1.shape[1]))/ (amenite)))
         R_mat[job.formal == 0, :] = 0
     elif type_housing == 'backyard':
-        amenite = amenite * param["amenite_backyard"]
+        amenite = amenite * param["amenity_backyard"]
         #R_mat = definit_R_informal(Uo, param, trans_tmp_cout_generalise, income1, amenite)
         R_mat = 1 / param["size_shack"] * (income1 - trans_tmp_cout_generalise[:,:,0] - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["size_shack"] - param["basic_q"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"])) 
         R_mat[job.backyard == 0,:] = 0
     elif type_housing == 'informal':
-        amenite = amenite * param["amenite_settlement"]
+        amenite = amenite * param["amenity_settlement"]
         R_mat = 1 / param["size_shack"] * (income1 - trans_tmp_cout_generalise[:,:,0] - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["size_shack"] - param["basic_q"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"]))        
         R_mat[job.settlement == 0,:] = 0
 
@@ -85,29 +85,43 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     lieu_zero = np.isnan(proba_log) | np.isinf(proba_log)
     proba_log[lieu_zero] = -100000
 
-    medi = np.max(proba_log, 0)
-    medi[np.isnan(medi)] = 0
-    medi[np.isinf(medi)] = 0
-    medi = np.matlib.repmat(medi, R_mat.shape[1], 1)
-    proba_log = proba_log - medi #Probabilité que les gens d'un centre d'emploi veuillent habiter à tel endroit
-
+    medi1 = np.max(proba_log, 0)
+    medi2 = np.max(proba_log, 1)
+    medi1[np.isnan(medi1)] = 0
+    medi1[np.isinf(medi1)] = 0
+    medi1 = np.matlib.repmat(medi1, R_mat.shape[1], 1)
+    proba_log1 = proba_log - medi1 #Probabilité que les gens d'un centre d'emploi veuillent habiter à tel endroit
+    medi2[np.isnan(medi2)] = 0
+    medi2[np.isinf(medi2)] = 0
+    medi2 = np.matlib.repmat(medi2, R_mat.shape[0], 1)
+    proba_log2 = proba_log - np.transpose(medi2)
+    
     #Number of jobs
-    proba_log = proba_log + np.log(np.transpose(multi_proba))
-
-    if sum(sum(~np.isreal(proba_log))) >= 1:
+    proba_log1 = proba_log1 + np.log(np.transpose(multi_proba))
+    proba_log2 = proba_log2 + np.log(np.transpose(multi_proba))
+    
+    if sum(sum(~np.isreal(proba_log2))) >= 1:
         print('nombres complexes dans proba!! pause !')
 
     #Exponential form
-    proba = np.exp(proba_log)
-    proba[np.transpose(Z) <= 0] = 0
+    proba1 = np.exp(proba_log1)
+    proba2 = np.exp(proba_log2)
+    proba1[np.transpose(Z) <= 0] = 0
+    proba2[np.transpose(Z) <= 0] = 0
 
-    proba[lieu_zero] = 0
-    proba[np.transpose(R_mat) <= 0] = 0
+    proba1[lieu_zero] = 0
+    proba1[np.transpose(R_mat) <= 0] = 0
+    proba2[lieu_zero] = 0
+    proba2[np.transpose(R_mat) <= 0] = 0
 
     #Normalization of the proba
-    proba1 = np.sum(proba,0)
-    proba = proba / np.matlib.repmat(proba1, (R_mat).shape[1], 1)
-    proba[np.matlib.repmat(proba1, (R_mat).shape[1], 1) == 0] = 0 #Probabilité que les employés de chaque zone d'emploi habitent dans chaque cellule de la grille
+    proba_1 = np.nansum(proba1,0)
+    proba1 = proba1 / np.matlib.repmat(proba_1, (R_mat).shape[1], 1)
+    proba1[np.matlib.repmat(proba_1, (R_mat).shape[1], 1) == 0] = 0 #Probabilité que les employés de chaque zone d'emploi habitent dans chaque cellule de la grille
+
+    proba_2 = np.nansum(proba2,1)
+    proba2 = proba2 / np.transpose(np.matlib.repmat(proba_2, (R_mat).shape[0], 1))
+    proba2[np.transpose(np.matlib.repmat(proba_2, (R_mat).shape[0], 1) == 0)] = 0 #Probabilité que les habitants de chaque cellue travaillent dans chaque zone d'emploi
 
     #Housing construction
     if type_housing == 'formal':
@@ -121,18 +135,38 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
         elif option["double_storey_shacks"] == 1:
             housing = 1000000 * housing_informal(R, grid, param, job, income1, price_trans, proba)
 
-    limite = (income1 > price_trans[:,:,0]) & (np.transpose(proba) > 0) & (~np.isnan(price_trans[:,:,0])) & (R_mat > 0)
-    proba = np.transpose(proba) * limite
+    limite1 = (income1 > price_trans) & (np.transpose(proba1) > 0) & (~np.isnan(price_trans)) & (R_mat > 0)
+    proba1 = np.transpose(proba1) * limite1
+    
+    limite2 = (income1 > price_trans) & (np.transpose(proba2) > 0) & (~np.isnan(price_trans)) & (R_mat > 0)
+    proba2 = np.transpose(proba2) * limite2
 
-    people_init = housing / hous * (np.sum(limite,0)>0)
-    people_init[np.isnan(people_init)] = 0
-    people_init_vrai = people_init * coeff_land_ici * 0.5 ** 2
+    people_init1 = housing / hous * (np.sum(limite1,0)>0)
+    people_init1[np.isnan(people_init1)] = 0
+    people_init_vrai1 = people_init1 * coeff_land_ici * 0.5 ** 2
+    
+    people_init2 = housing / hous * (np.sum(limite2,0)>0)
+    people_init2[np.isnan(people_init2)] = 0
+    people_init_vrai2 = people_init2 * coeff_land_ici * 0.5 ** 2
 
-    people_travaille = people_init_vrai * proba
-    people_travaille[np.isnan(people_travaille)] = 0
-    job_simul = np.sum(people_travaille, axis = 1) #Entre people_init_vrai et job_simul, il y a des gens qui se sont perdus ^^'
+    people_travaille1 = people_init_vrai1 * proba1
+    people_travaille1[np.isnan(people_travaille1)] = 0
+    job_simul1 = np.sum(people_travaille1, axis = 1) #Entre people_init_vrai et job_simul, il y a des gens qui se sont perdus ^^'
+    
+    people_travaille2 = people_init_vrai2 * proba2
+    people_travaille2[np.isnan(people_travaille2)] = 0
+    job_simul2 = np.sum(people_travaille2, axis = 1)
     
     if type_housing == 'formal':
         R = np.maximum(R, transaction_cost_in)
 
-    return job_simul,R,people_init,people_travaille,housing,hous,R_mat
+    return job_simul2, R, people_init2, people_travaille2, housing, hous, R_mat
+    #job_simul: nb of persons per employment center and income group. Most important variable.
+    #R: rents (highest bid rentà).
+    #R_mat: rents (for each income group and employment center)
+    #hous: dwelling sizes.
+    #housing: housing supply.
+    #people_init: nb of persons per grid cell
+    #people_travaille: nb of perso per grid cell working in each employment center
+    
+    

@@ -214,7 +214,7 @@ class TransportData:
         if isinstance(tbis, int):
             a = 1
         else:
-            a = size(tbis)
+            a = len(tbis)
         #compute transport price for each year
         for index in range(0, a):
             for index2 in range(0, trans_nbre_modes):
