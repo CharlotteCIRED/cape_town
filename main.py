@@ -65,12 +65,18 @@ trans.import_transport_data(option2, grid, macro_data, param, job, t)
 amenity = Amenity()
 amenity.amenity_calibration_parameters_v3(grid, param, macro_data, job, option2, trans, households_data, land, 2011)
 land.amenite = amenity.estimated_amenities / np.mean(amenity.estimated_amenities)
+#land.amenite = np.ones(24014)
 param["coeff_beta"] = amenity.coeff_beta
-param["coeff_alpha"] = 1 - param.coeff_beta
+#param["coeff_beta"] = 0.25
+param["coeff_alpha"] = 1 - param["coeff_beta"]
 param["basic_q"] = amenity.basic_q
+#param["basic_q"] = 4.1
 param["coeff_b"] = amenity.coeff_b
+#param["coeff_b"] = 0.25
 param["coeff_a"] = 1 - amenity.coeff_b
-param["coeff_grandA"] = amenity.coeff_grandA * 1.3
+#param["coeff_a"] = 1 - param["coeff_b"]
+param["coeff_A"] = amenity.coeff_A * 1.3
+#param["coeff_A"] = 0.04
 
 #Job centers, transportation data
 job = ImportEmploymentData()
@@ -82,22 +88,22 @@ trans.import_transport_data(option, grid, macro_data, param, job, t)
 
 #Solver
 print('*** Initial state ***')
-Uo_perso = 1000
-etat_initial_erreur, etat_initial_job_simul, etat_initial_people_housing_type, etat_initial_people_center, etat_initial_people1, etat_initial_hous1, etat_initial_housing1, etat_initial_rent1, etat_initial_R_mat, etat_initial_capital_land1, etat_initial_revenu_in, etat_initial_limite1, etat_initial_matrice_J, etat_initial_mult, etat_initial_utility, etat_initial_impossible_population = NEDUM_basic_need_informal(t[0], trans, option, land, grid, macro_data, param, poly, Uo_perso)
+Uo_perso = 8000
+etat_initial_erreur, etat_initial_job_simul, etat_initial_people_housing_type, etat_initial_people_center, etat_initial_people1, etat_initial_hous1, etat_initial_housing1, etat_initial_rent1, etat_initial_R_mat, etat_initial_capital_land1, etat_initial_revenu_in, etat_initial_limite1, etat_initial_matrice_J, etat_initial_mult, etat_initial_utility, etat_initial_impossible_population = NEDUM_basic_need_informal(t[0], trans, option, land, grid, macro_data, param, job, Uo_perso)
 print('*** End of static resolution ***')
 
 #Initial statistics
-stat_initiales = compute_stat_initiales_formal_informal(trans, land, grid, macro_data, param,option,etat_initial,poly,t[0])
+#stat_initiales = compute_stat_initiales_formal_informal(trans, land, grid, macro_data, param,option,etat_initial,poly,t[0])
 
 #Plot outputs
-trace_courbes_formal(grid, etat_initial, stat_initiales, macro_data, data_courbe, land, param, macro, option, t[0])
-trace_courbes_informal_abs(grid, etat_initial, stat_initiales, data_courbe, land, param, macro_data, poly, option, t[0])
-export_for_maps_initial_benchmark(grid, land, etat_initial, stat_initiales, data_courbe)
+#trace_courbes_formal(grid, etat_initial, stat_initiales, macro_data, data_courbe, land, param, macro, option, t[0])
+#trace_courbes_informal_abs(grid, etat_initial, stat_initiales, data_courbe, land, param, macro_data, poly, option, t[0])
+#export_for_maps_initial_benchmark(grid, land, etat_initial, stat_initiales, data_courbe)
 print('*** Outputs exported ***')
 
 # %% Evolution
 
 print('*** Beginning of the evolution ***')
-simulation = nedum_lite_polycentrique_1_6(t, etat_initial, trans, grid, land, poly, param, macro_data, option)
-stat_dynamics = compute_stat_finales_Cape_Town(macro_data, option, trans, land, grid, param, poly, simulation)
+simulation_people_travaille, simulation_people_housing_type, simulation_hous, simulation_rent, simulation_people, simulation_erreur, simulation_housing, simulation_Uo_bis, simulation_deriv_housing, simulation_T = nedum_lite_polycentrique_1_6(t, etat_initial_erreur, etat_initial_people_housing_type, etat_initial_people_center, etat_initial_people1, etat_initial_hous1, etat_initial_housing1, etat_initial_rent1, etat_initial_utility, etat_initial_revenu_in, trans, grid, land, job, param, macro_data, option)
+#stat_dynamics = compute_stat_finales_Cape_Town(macro_data, option, trans, land, grid, param, poly, simulation)
 print('*** End of the evolution ***')

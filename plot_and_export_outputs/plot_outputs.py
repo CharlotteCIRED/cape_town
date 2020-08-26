@@ -87,3 +87,26 @@ for i, txt in enumerate(label):
 
 grid_map(data_courbe.income_grid, grid)
 plt.scatter(Xou / 1000, You / 1000)
+
+#SOLVER
+#plt.scatter(range(0,index_t), erreur[0:index_t, 0])
+#plt.scatter(range(0,index_t), erreur[0:index_t, 1])
+#plt.scatter(range(0,index_t), erreur[0:index_t, 2]) #pb ?
+#plt.scatter(range(0,index_t), erreur[0:index_t, 3]) #pb ?
+#plt.scatter(range(0,index_t), erreur[0:index_t, 4])
+#plt.scatter(range(0,index_t), erreur[0:index_t, 5]) #pb ?
+#plt.scatter(range(0,index_t), erreur[0:index_t, 6]) #pn ?
+#plt.scatter(range(0,index_t), erreur[0:index_t, 7]) 
+#plt.scatter(range(0,index_t), erreur[0:index_t, 8])
+#plt.scatter(range(0,index_t), erreur[0:index_t, 9]) #pb
+#plt.scatter(range(0,index_t), erreur[0:index_t, 10])
+#plt.scatter(range(0,index_t), erreur[0:index_t, 11]) #pb
+#plt.scatter(range(0,index_t), erreur[0:index_t, 12])
+#plt.scatter(range(0,index_t), erreur[0:index_t, 13])
+#plt.scatter(range(0,index_t), erreur[0:index_t, 14]) #PB
+#plt.scatter(range(0,index_t), erreur[0:index_t, 15]) #pb
+#plt.scatter(range(0,index_t), erreur[0:index_t, 16]) 
+#plt.scatter(range(0,index_t), erreur[0:index_t, 17]) #pb
+
+#plt.scatter(range(0,index_t), val_moy[0:index_t])
+

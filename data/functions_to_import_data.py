@@ -176,10 +176,10 @@ def import_metro_data(job, grid, param):
 
     return distance_metro, duration_metro
 
-def revenu2_polycentrique(macro, param, option, grille, poly, t_trafic, index):
+def revenu2_polycentrique(macro, param, option, grid, job, t_trafic, index):
     #evolution du revenu...
     #revenu_tmp = interp1d(np.array(poly.annee) - param["year_begin"], poly.avg_inc, T)
-    revenu_tmp = interp1d(np.array(poly.annee) - param["baseline_year"], np.transpose(poly.avg_inc))
+    revenu_tmp = interp1d(np.array(job.annee) - param["baseline_year"], np.transpose(job.avg_inc))
     #revenu = np.zeros(((len(poly.Jx), len(grille.dist)))) #Pour chaque classe de ménage et chaque centre d'emploi, habitant en chaque point de la ville, chaque année
     #temp = np.matlib.repmat(pd.DataFrame(revenu_tmp(t_trafic[index])), 1, (grille.dist).shape)
     #revenu[:,:, index] = np.reshape(temp, 4, (grille.dist).shape)
@@ -191,7 +191,7 @@ def revenu2_polycentrique(macro, param, option, grille, poly, t_trafic, index):
 
 def interest_rate(macro_data, T):
     number_years_interest_rate = 5
-    interest_rate_3_years = macro_data.spline_notaires(range(T - number_years_interest_rate + 1,T))
+    interest_rate_3_years = macro_data.spline_notaires(range(int(T) - number_years_interest_rate + 1, int(T)))
     interest_rate_3_years[interest_rate_3_years < 0] = np.nan
     return np.nanmean(interest_rate_3_years)/100
 

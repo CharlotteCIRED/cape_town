@@ -42,7 +42,7 @@ class TransportData:
         duration_minibus = transport_time_grid["durationMinibus"]
         duration_bus = transport_time_grid["durationBus"]
         
-        if option["polycentric"] == 0:
+        if option["nb_employment_center"] == 1:
             distance_car = distance_car[135]
             duration_car = duration_car[135]
             distance_metro = distance_metro[135]
@@ -50,7 +50,7 @@ class TransportData:
             duration_minibus = duration_minibus[135]
             duration_bus = duration_bus[135]
             nb_center = 1
-        elif option["polycentric"] == 1:
+        elif option["nb_employment_center"] == 6:
             distance_car = distance_car[(10, 34, 40, 108, 135, 155),:]
             duration_car = duration_car[(10, 34, 40, 108, 135, 155),:]
             distance_metro = distance_metro[(10, 34, 40, 108, 135, 155),:]
@@ -71,12 +71,12 @@ class TransportData:
         
         #Points where all data are available                                     
         trans_reliable = np.ones(len(grid.dist))
-        if option["polycentric"] == 0:
+        if option["nb_employment_center"] == 1:
             trans_reliable[np.isnan(duration_car)] = 0
             trans_reliable[np.isnan(duration_metro)] = 0
             trans_reliable[np.isnan(duration_minibus)] = 0
             trans_reliable[np.isnan(duration_bus)] = 0
-        elif option["polycentric"] == 1:
+        elif option["nb_employment_center"] == 6 | option["nb_employment_center"] == 185:
             trans_reliable = np.ones((nb_center, len(grid.dist)))
             for i in range(0, nb_center):
                 trans_reliable[np.isnan(duration_car[:,i])] = 0
@@ -85,19 +85,27 @@ class TransportData:
                 trans_reliable[np.isnan(duration_bus[:,i])] = 0
         
         #Define time and distance variables
-        if option["polycentric"] == 1:
+        if option["nb_employment_center"] == 6:
             LongueurTotale_VP = np.array([distance_car[0], distance_car[0], distance_car[0], distance_car[0], distance_car[1], distance_car[1], distance_car[1], distance_car[2], distance_car[2], distance_car[2], distance_car[2], distance_car[4], distance_car[4], distance_car[4], distance_car[4], distance_car[5], distance_car[5], distance_car[5]])
             LongueurTotale_VP = LongueurTotale_VP * 1.2
             LongueurEnVehicule_TC = distance_metro_2 #pour le coût en métro, les coûts dépendent de la distance à la gare centrale du Cap (LongueurEnVehicule_TC n'est donc pas la distance parcourue en TC)
-        else:
-            if param["nb_of_income_classes"] == 4: 
-                LongueurTotale_VP = np.array([distance_car, distance_car, distance_car, distance_car])
-                LongueurTotale_VP = LongueurTotale_VP * 1.2
-                LongueurEnVehicule_TC = distance_metro_2
-            elif param["nb_of_income_classes"] == 12: 
-                LongueurTotale_VP = np.array([distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car])
-                LongueurTotale_VP = LongueurTotale_VP * 1.2
-                LongueurEnVehicule_TC = distance_metro_2
+        elif option["nb_employment_center"] == 185:
+            LongueurTotale_VP = np.empty((740, 24014))
+            for i in range(0, 185):
+                LongueurTotale_VP[4 * i, :] = distance_car[i]
+                LongueurTotale_VP[4 * i + 1, :] = distance_car[i]
+                LongueurTotale_VP[4 * i + 2, :] = distance_car[i]
+                LongueurTotale_VP[4 * i + 3, :] = distance_car[i]              
+            LongueurTotale_VP = LongueurTotale_VP * 1.2
+            LongueurEnVehicule_TC = distance_metro_2
+        elif (param["nb_employment_center"] == 1) & (param["nb_of_income_classes"] == 4): 
+            LongueurTotale_VP = np.array([distance_car, distance_car, distance_car, distance_car])
+            LongueurTotale_VP = LongueurTotale_VP * 1.2
+            LongueurEnVehicule_TC = distance_metro_2
+        elif (param["nb_employment_center"] == 1) & (param["nb_of_income_classes"] == 12): 
+            LongueurTotale_VP = np.array([distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car, distance_car])
+            LongueurTotale_VP = LongueurTotale_VP * 1.2
+            LongueurEnVehicule_TC = distance_metro_2
             
         increment = range(0, len(job.quel))
         
@@ -126,27 +134,47 @@ class TransportData:
         prix_essence_mois = np.zeros(prix_essence.shape)
         prix_essence_mois = prix_essence * 2 * 20
         
-        if option["polycentric"] == 1:
+        if option["nb_employment_center"] == 6:
             nb_employment_center = 18
+        elif option["nb_employment_center"] == 185:
+            nb_employment_center = 740
         else:
-            if param["nb_of_income_classes"] == 4:
+            if option["nb_employment_center"] == 1 & param["nb_of_income_classes"] == 4:
                 nb_employment_center = 4
-            elif param["nb_of_income_classes"] == 12:
+            elif option["nb_employment_center"] == 1 &  param["nb_of_income_classes"] == 12:
                 nb_employment_center = 12
     
         #Transport times
-        if option["polycentric"] == 1:
+        if option["nb_employment_center"] == 6:
             TEMPSHPM = np.array([duration_car[0], duration_car[0], duration_car[0], duration_car[0], duration_car[1], duration_car[1], duration_car[1], duration_car[2], duration_car[2], duration_car[2], duration_car[2], duration_car[4], duration_car[4], duration_car[4], duration_car[4], duration_car[5], duration_car[5], duration_car[5]])
             TEMPS_MINIBUS = np.array([duration_minibus[0], duration_minibus[0], duration_minibus[0], duration_minibus[0], duration_minibus[1], duration_minibus[1], duration_minibus[1], duration_minibus[2], duration_minibus[2], duration_minibus[2], duration_minibus[2], duration_minibus[4], duration_minibus[4], duration_minibus[4], duration_minibus[4], duration_minibus[5], duration_minibus[5], duration_minibus[5]])
             TEMPS_BUS = np.array([duration_bus[0], duration_bus[0], duration_bus[0], duration_bus[0], duration_bus[1], duration_bus[1], duration_bus[1], duration_bus[2], duration_bus[2], duration_bus[2], duration_bus[2], duration_bus[4], duration_bus[4], duration_bus[4], duration_bus[4], duration_bus[5], duration_bus[5], duration_bus[5]])
             TEMPSTC = duration_metro_2 #duration_metro
+        elif option["nb_employment_center"] == 185:
+            TEMPSHPM = np.empty((740, 24014))
+            TEMPS_MINIBUS = np.empty((740, 24014))
+            TEMPS_BUS = np.empty((740, 24014))
+            for i in range(0, 185):
+                TEMPSHPM[4 * i, :] = duration_car[i]
+                TEMPSHPM[4 * i + 1, :] = duration_car[i]
+                TEMPSHPM[4 * i + 2, :] = duration_car[i]
+                TEMPSHPM[4 * i + 3, :] = duration_car[i]         
+                TEMPS_MINIBUS[4 * i, :] = duration_minibus[i]
+                TEMPS_MINIBUS[4 * i + 1, :] = duration_minibus[i]
+                TEMPS_MINIBUS[4 * i + 2, :] = duration_minibus[i]
+                TEMPS_MINIBUS[4 * i + 3, :] = duration_minibus[i]    
+                TEMPS_BUS[4 * i, :] = duration_bus[i]
+                TEMPS_BUS[4 * i + 1, :] = duration_bus[i]
+                TEMPS_BUS[4 * i + 2, :] = duration_bus[i]
+                TEMPS_BUS[4 * i + 3, :] = duration_bus[i]    
+            TEMPSTC = duration_metro_2 #duration_metro
         else:
-            if param["nb_of_income_classes"] == 4:
+            if option["nb_employment_center"] == 1 & param["nb_of_income_classes"] == 4:
                 TEMPSHPM = np.array([duration_car, duration_car, duration_car, duration_car])
                 TEMPS_MINIBUS = np.array([duration_minibus, duration_minibus, duration_minibus, duration_minibus])
                 TEMPS_BUS = np.array([duration_bus, duration_bus, duration_bus, duration_bus])
                 TEMPSTC = duration_metro_2 #duration_metro
-            elif param["nb_of_income_classes"] == 12:
+            elif option["nb_employment_center"] == 1 & param["nb_of_income_classes"] == 12:
                 TEMPSHPM = np.array([duration_car, duration_car, duration_car, duration_car, duration_car, duration_car, duration_car, duration_car, duration_car, duration_car, duration_car, duration_car])
                 TEMPS_MINIBUS = np.array([duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus, duration_minibus])
                 TEMPS_BUS = np.array([duration_bus, duration_bus, duration_bus, duration_bus, duration_bus, duration_bus, duration_bus, duration_bus, duration_bus, duration_bus, duration_bus, duration_bus])
@@ -171,16 +199,18 @@ class TransportData:
         mult_prix_sortie[:,:,3] = pd.DataFrame(LongueurTotale_VP)
         mult_prix_sortie[:,:,4] = pd.DataFrame(LongueurTotale_VP)
 
-        if option["polycentric"] == 1:
+        if option["nb_employment_center"] == 6:
             prix_sortie_unitaire = np.empty((prix_essence_mois.shape[0], 5))
             prix_sortie_unitaire[:,0] = np.ones(prix_essence_mois.shape)
-        else:
-            if param["nb_of_income_classes"] == 4:
-                prix_sortie_unitaire = np.empty((prix_essence_mois.shape[0], 5))
-                prix_sortie_unitaire[:,0] = np.ones(prix_essence_mois.shape)
-            else: 
-                prix_sortie_unitaire = np.empty((1, 5))
-                prix_sortie_unitaire[:,0] = np.ones(1)
+        elif option["nb_employment_center"] == 185:
+            prix_sortie_unitaire = np.empty((prix_essence_mois.shape[0], 5))
+            prix_sortie_unitaire[:,0] = np.ones(prix_essence_mois.shape)
+        elif option["nb_employment_center"] == 1 & param["nb_of_income_classes"] == 4:
+            prix_sortie_unitaire = np.empty((prix_essence_mois.shape[0], 5))
+            prix_sortie_unitaire[:,0] = np.ones(prix_essence_mois.shape)
+        elif option["nb_employment_center"] == 1 & param["nb_of_income_classes"] == 12: 
+            prix_sortie_unitaire = np.empty((1, 5))
+            prix_sortie_unitaire[:,0] = np.ones(1)
         prix_sortie_unitaire[:,1] = prix_metro_km * 20 * 2 * 12
         prix_sortie_unitaire[:,2] = prix_essence_mois * 12
         prix_sortie_unitaire[:,3] = prix_taxi_km * 2 * 20 * 12
@@ -206,7 +236,9 @@ class TransportData:
         mult = cout_generalise
         cout_generalise_ancien = cout_generalise
         tbis = t_trafic
-
+        
+        prix_temps_bis = np.empty((nb_employment_center, 24014, len(t_trafic)))
+ 
         taille_menage_mat = np.matlib.repmat(param["household_size"], 1, int(len(job.code_emploi_init) / param["nb_of_income_classes"]))
         taille_menage_mat = np.matlib.repmat(np.transpose(taille_menage_mat.squeeze()[job.quel]), 1, len(grid.dist)) #pour prendre en compte des tailles de ménages différentes
         taille_menage_mat = np.reshape(taille_menage_mat, (len(grid.dist), nb_employment_center)) #24014 * 4
@@ -240,9 +272,9 @@ class TransportData:
             revenu_ici = revenu2_polycentrique(macro_data, param, option, grid, job, t_trafic, index) #4, 2014, 7 ---> ne devrait pas dépendant du temps (2014 * 4)
             #revenu_ici = np.matlib.repmat(revenu_ici, 2014)
             income_per_hour = revenu_ici / number_weeks / number_hour_week
-            prix_temps = np.empty((24014, nb_employment_center , 5))
+            prix_temps = np.empty((24014, nb_employment_center, 5))
             for i in range(0,nb_employment_center):
-                prix_temps[:,i,:] = temps_sortie[i,:,:] * param2["cost_of_time"] * income_per_hour[i]  / 60 * 2 * 20 * 12
+                prix_temps[:,i,:] = temps_sortie[i,:,:] * param["cost_of_time"] * income_per_hour[i]  / 60 * 2 * 20 * 12
             #prix_temps = temps_sortie * param["prix_temps"] * income_per_hour / 60 * 2 * 20 * 12 #21014 * 4 * 2011* 4 * 5
         
             #if NON_LIN == 1:
@@ -276,12 +308,15 @@ class TransportData:
              #   trans_prix_temps[:,:,index] = sum(quel * prix_temps, 3)
             #else:
             cout_generalise[:,:,index] = np.min(prix_final, axis = 2)
-            quel[:,:,index] = np.argmin(prix_final, axis = 2)        
+            quel[:,:,index] = np.argmin(prix_final, axis = 2)
+            for i in range(0, quel.shape[0]):
+                for j in range(0, quel.shape[1]):
+                    prix_temps_bis[:, :, index]  = prix_temps[:, :, int(quel[i, j, index])]
            
         self.reliable = trans_reliable #number of points where data are available. 24014
         self.distance_sortie = trans_distance_sortie #distance to employment center. nb of employment center * 24014 * 5 transportation modes.
         self.cout_generalise = cout_generalise #transportation costs (choosing the transportation mode that minimizes transportation costs). nb of employment centers * 24014 * 7 years
-        self.prix_temps = prix_temps #Opportunity cost of transport. nb of employment centers * 24014 * 5 transportation modes
+        self.prix_temps = prix_temps_bis #Opportunity cost of transport. nb of employment centers * 24014 * 5 transportation modes
         self.t_transport = t_trafic + param["baseline_year"] #Years.
         self.quel = quel #Transportation mode. nb of employment centers * 24014 * 7 years.
         self.mult = mult #pareil que coût generalisé

@@ -39,7 +39,7 @@ class ImportHouseholdsData:
         income_12_class_SP_2011 = pd.DataFrame({'class1': dwellings_data_2011.Data_census_dwelling_INC_0, 'class2':dwellings_data_2011.Data_census_dwelling_INC_1_4800, 'class3': dwellings_data_2011.Data_census_dwelling_INC_4801_9600, 'class4': dwellings_data_2011.Data_census_dwelling_INC_9601_19600, 'class5': dwellings_data_2011.Data_census_dwelling_INC_19601_38200, 'class6': dwellings_data_2011.Data_census_dwelling_INC_38201_76400, 'class7': dwellings_data_2011.Data_census_dwelling_INC_76401_153800, 'class8':dwellings_data_2011.Data_census_dwelling_INC_153801_307600, 'class9':dwellings_data_2011.Data_census_dwelling_INC_307601_614400, 'class10': dwellings_data_2011.Data_census_dwelling_INC_614001_1228800, 'class11':dwellings_data_2011.Data_census_dwelling_INC_1228801_2457600, 'class12': dwellings_data_2011.Data_census_dwelling_INC_2457601_more})
         income_n_class_SP_2011 = np.zeros((len(Code_SP_2011), param["nb_of_income_classes"]))    
         for i in range(0, param["nb_of_income_classes"]):
-            income_n_class_SP_2011[:,i] = np.sum(income_12_class_SP_2011.iloc[:, (param["income_distribution"]) == i], axis = 1)         
+            income_n_class_SP_2011[:,i] = np.sum(income_12_class_SP_2011.iloc[:, (param["income_distribution"]) == i + 1], axis = 1)         
         
         #Poor and rich
         middle_class = math.floor(param["nb_of_income_classes"] / 2)
@@ -69,7 +69,7 @@ class ImportHouseholdsData:
         median_income_2011 = income_2011.INC_med #Median income for each income group
         income_groups_limits = np.zeros(param["nb_of_income_classes"]) #Min. income for each income class
         for j in range(0, param["nb_of_income_classes"]):
-            income_groups_limits[j] = np.max(income_2011.INC_max.iloc[param["income_distribution"] == j])
+            income_groups_limits[j] = np.max(income_2011.INC_max.iloc[param["income_distribution"] == j + 1])
  
         # %% Census 2001: Income and dwellings data 2001
         income_2001 = pd.read_csv('./2. Data/Basile data/Census_2001_income.csv', sep = ";")

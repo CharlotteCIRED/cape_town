@@ -23,7 +23,8 @@ class Land:
         grid = pd.read_csv('./2. Data/Basile data/grid_NEDUM_Cape_Town_500.csv', sep = ';')
         urban = np.transpose(grid.urban) / area_pixel
         informal = np.transpose(grid.informal) / area_pixel
-        coeff_land = (np.transpose(grid.unconstrained_out) + np.transpose(grid.unconstrained_UE)) / area_pixel
+        coeff_land_no_urban_edge = (np.transpose(grid.unconstrained_out) + np.transpose(grid.unconstrained_UE)) / area_pixel
+        coeff_land_urban_edge = np.transpose(grid.unconstrained_UE) / area_pixel
         
         #Number of RDP/BNG dwellings and area available for backyarding in each subplace
         RDP_houses_estimates = households_data.GV_count_RDP
@@ -55,9 +56,27 @@ class Land:
             spline_land_RDP = interp1d(year_data_informal,  np.transpose([area_RDP, area_RDP]), kind = method)
             spline_estimate_RDP = interp1d(year_data_informal, np.transpose([RDP_houses_estimates, RDP_houses_estimates]), kind = method)
 
+        
+        coeff_land_private_urban_edge = (coeff_land_urban_edge - np.fmin(area_RDP + area_backyard, urban)) * param["max_land_use"]
+        coeff_land_private_no_urban_edge = (coeff_land_no_urban_edge - informal - np.fmin(area_RDP + area_backyard, urban)) * param["max_land_use"]
+        coeff_land_private_urban_edge[coeff_land_private_urban_edge < 0] = 0
+        coeff_land_private_no_urban_edge[coeff_land_private_no_urban_edge < 0] = 0
+        
+        if option["urban_edge"] == 0:
+            year_constraints = np.array([1990, 2015, 2016, 2040]) - param["baseline_year"]
+            spline_land_constraints = interp1d(year_constraints, np.transpose(np.array([coeff_land_urban_edge, coeff_land_urban_edge, coeff_land_no_urban_edge, coeff_land_no_urban_edge])))
+        else:
+            year_constraints = np.array([1990, 2040]) - param["baseline_year"]
+            spline_land_constraints = interp1d(year_constraints, np.transpose(np.array([coeff_land_urban_edge, coeff_land_urban_edge])))
+
+
+        if option["urban_edge"] == 0:
+            coeff_land_private = coeff_land_private_urban_edge
+        else:
+            coeff_land_private = coeff_land_private_no_urban_edge
+
+
         #Coeff_land for each housing type
-        coeff_land_private = (coeff_land - informal - np.fmin(area_RDP + area_backyard, urban)) * param["max_land_use"]
-        coeff_land_private[coeff_land_private < 0] = 0        
         coeff_land_backyard = coeff_land_backyard * param["max_land_use_backyard"]
         coeff_land_backyard[coeff_land_backyard < 0] = 0
         coeff_land_settlement = informal * param["max_land_use_settlement"]
@@ -70,7 +89,8 @@ class Land:
         
         self.urban = urban #Prop. urbanized
         self.informal = informal #Prop of the area occupied by informal dwellings
-        self.coeff_land = coeff_land
+        self.coeff_land_urban_edge = coeff_land_urban_edge
+        self.coeff_land_no_urban_edge = coeff_land_no_urban_edge
         self.RDP_houses_estimates = RDP_houses_estimates #Number of RDP houses
         
         self.area_RDP = area_RDP #Area of subsidized housing
@@ -91,3 +111,11 @@ class Land:
         self.coeff_land = np.array([coeff_land_private, coeff_land_backyard, coeff_land_settlement, coeff_land_RDP])
         
         self.housing_limit = housing_limit
+        
+        self.year_constraints = year_constraints
+        self.spline_land_constraints = spline_land_constraints
+        
+        
+
+
+

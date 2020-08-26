@@ -10,59 +10,59 @@ import numpy as np
 from scipy.interpolate import interp1d
 import pandas as pd
 
-def compute_stat_initiales_formal_informal(trans, land, grille, macro, param, option, etat_initial, poly, t_ici):
+def compute_stats_initial_state(trans, land, grid, macro_data, param, option, etat_initial, job, t_ici):
 
-    stat_initiales.people1vrai = etat_initial.people_housing_type  #.* land.coeff_land;
-    stat_initiales.population = sum(sum(stat_initiales.people1vrai))
-    population = copy.deepcopy(stat_initiales.population)
+    population = etat_initial_people_housing_type
+    total_population = sum(sum(population))
 
-    moy_initial_polycentrique = lambda entree : moy_polycentrique(etat_initial.people_center, entree)
-    moy_initial = lambda entree : moy(grille, param, np.ones(size(sum(etat_initial.people_housing_type,1))), sum(etat_initial.people_housing_type,1), sum(land.coeff_land,1), population, entree)
-    moy_initial_formel = lambda entree : moy(grille, param, np.ones(size(etat_initial.people_housing_type[1, :])), etat_initial.people_housing_type[1,:], land.coeff_land[1,:], population, entree)
+    moy_initial_polycentrique = lambda entree : moy_polycentrique(etat_initial_people_center, entree)
+    moy_initial = lambda entree : moy(grid, param, np.ones(len(np.sum(etat_initial_people_housing_type, 1))), np.sum(etat_initial_people_housing_type, 1), np.sum(land.coeff_land, 1), total_population, entree)
+    moy_initial_formel = lambda entree : moy(grid, param, np.ones(size(etat_initial_people_housing_type[0, :])), etat_initial_people_housing_type[0,:], land.coeff_land[0,:], total_population, entree)
     
-    cout_monetaire = ppval(macro.spline_carburant,t_ici) + param["taxe"]
-    stat_initiales.coeff_land1 = land.coeff_land
+    #cout_monetaire = macro_data.spline_fuel(t_ici) + param["taxe"]
+    cout_monetaire = macro_data.spline_fuel(t_ici)
+    coeff_land = land.coeff_land
 
-    revenu1 = revenu2_polycentrique(macro,param,option,grille, poly,t_ici)
-    stat_initiales.revenu_moy = sum(revenu1 * etat_initial.people_center, 1) / sum(etat_initial.people_center,1)
-    stat_initiales.people_income_group = np.zeros(param["multiple_class"], len(grille.dist))
-    for i in range (0, param["multiple_class"] - 1):
-        stat_initiales.people_income_group[i,:] = sum(etat_initial.people_center(np.transpose(poly.class[1,:]) == i, :), 1)
+    income = revenu2_polycentrique(macro_data, param, option, grid, job, t_ici)
+    mean_income = np.sum(np.transpose(np.matlib.repmat(income, 24014, 1)) * etat_initial_people_center, 1) / np.sum(etat_initial_people_center, 1)
+    people_income_group = np.zeros((param["nb_of_income_classes"], len(grid.dist)))
+    for i in range (0, param["nb_of_income_classes"]):
+        people_income_group[i,:] = np.sum(etat_initial_people_center[job.classes == i, :], 0)
 
-
-    for i = 1:trans.nbre_modes
-        stat_initiales.frac_mode(i) = sum(nansum(trans.quel(:,:,i) .* etat_initial.people_center)) ./ sum(nansum(etat_initial.people_center));
+    modal_share = np.empty(5)
+    for i in range(0, 5):
+        modal_share[i] = np.nansum(etat_initial_people_center[trans.quel[:,:,0] == i]) / total_population
 
     #distance moyenne effectu?e par mode par m?nage pour un aller
-    stat_initiales.distance = moy_initial(moy_polycentrique(etat_initial.people_center, sum(trans.quel(:,:,:,1).*repmat(trans.distance_sortie(1,:,:,:),size(trans.quel,1),1),3)));
+    distance_temp = np.empty((trans.quel.shape[0], trans.quel.shape[1]))
+    for i in range(0, trans.quel.shape[0]):
+        for j in range(0, trans.quel.shape[1]):
+            print(i)
+            print(j)
+            distance_temp[i, j] = trans.distance_sortie[i, j, int(trans.quel[i, j, 1])]
+    distance = sum(distance_temp * etat_initial_people_center / total_population)
 
-    #distance moyenne domicile travail (vol d'oiseau) paetout sur la carte
-    stat_initiales.commuting_distance = sum(etat_initial.people_center .* trans.distance_sortie(:,:,1), 1) ./ sum(etat_initial.people_center, 1);
-
-    stat_initiales.surf_urba1 = somme_sur_ville(grille,param,sum((etat_initial.housing1>param.borne).*land.coeff_land,1)./land.coeff_landmax);
-
-    #Surfaces planchers construites
-    stat_initiales.floor_space1 = somme_sur_ville(grille,param,sum(etat_initial.housing1.*land.coeff_land,1)./land.coeff_landmax);
-    #Surfaces planchers formelles
-    stat_initiales.floor_space_formal1 = somme_sur_ville(grille,param, etat_initial.housing1(1,:).*(etat_initial.housing1(1,:)>param.borne).*land.coeff_land(1,:)./land.coeff_landmax);
+    #urbanized_area = np.sum((sum((etat_initial_housing1 > param["max_density"]) * land.coeff_land, 0) / param["max_land_use"]) * 0.25)
+    #floor_space = np.sum(sum(etat_initial_housing1 * land.coeff_land, 1) / param["max_land_use"]) * 0.25, 1)
+    #floor_space_formal = np.sum(sum(etat_initial_housing1[0, :] * (etat_initial_housing1[0, :] > param["max_density"]) * land.coeff_land[0, :] / param["max_land_use"]) * 0.25, 1)
 
     return stat_initiales
 
 def moy_polycentrique(people,entree):
     return np.nansum(entree * people, 1) / np.nansum(people, 1)
 
-def moy(grille, param, limite, people, coeff_land_ici, population, entree):
-    filtre = (~np.isnan(people)) & (~np.isnan(entree))
-    if len(grille.delta_d) == 1:
+def moy(grid, param, limite, people, coeff_land_ici, population, entree):
+    filtre = (~np.isnan(population)) & (~np.isnan(entree))
+    if len(grid.delta_d) == 1:
         sortie = sum(entree[filtre] * limite[filtre] * people[filtre] * coeff_land_ici[filtre] * 0.5 * 0.5 , 2) / population
     else:
-        sortie = sum(entree[filtre] * limite[filtre] * people[filtre] * coeff_land_ici[filtre] * 0.5 * 0.5, 2) / population
+        sortie = sum(entree[filtre] * limite[filtre] * population[filtre] * coeff_land_ici[filtre] * 0.5 * 0.5, 2) / population
 
     return sortie
 
-def somme_sur_ville(grille,param,entree):
+def somme_sur_ville(grid,param,entree):
     tps = np.ones(size(entree, 1), 1)
-    return sum(entree * 0.5 * 0.5,2)
+    return sum(entree * 0.5 * 0.5, 2)
 
 def revenu2(macro,t):
     return ppval(macro.spline_revenu,t)
@@ -70,11 +70,7 @@ def revenu2(macro,t):
 def transaction_cost(param,macro,revenu):
     return (revenu / macro.revenu_ref) * param["transaction_cost2011"]
 
-def revenu2_polycentrique(macro, param, option, grille, poly, T):
-    t = np.tranpose(T)
-    revenu_tmp = np.transpose(interp1(poly.annee - param["year_begin"], poly.avg_inc, T)) #Evolution du revenu
-    revenu = np.zeros([len(poly.Jx), len(grille.dist), len(T)])
-    for index in range (0, len(T)):
-        revenu[]:, :, index] = revenu_tmp[:, index] * np.ones(size(grille.dist))
-    
+def revenu2_polycentrique(macro, param, option, grid, job, T):
+    revenu_tmp = interp1d(np.array(job.annee) - param["baseline_year"], np.transpose(job.avg_inc))#Evolution du revenu
+    revenu = revenu_tmp(T)
     return revenu

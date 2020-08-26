@@ -14,7 +14,7 @@ from solver.useful_functions_solver import *
 
 def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_cost_in, housing_limite_ici, rent_reference, 
                 construction_ici, interest_rate1, income1, multi_proba, price_trans, price_trans_RDP, coeff_land_ici, 
-                coeff_landmax, job, amenite, solus, uti, type_housing):
+                coeff_landmax, job, amenite, solus, uti, type_housing, selected_pixels):
     
     """ Works both for formal or informal housing """
     
@@ -22,9 +22,9 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     Ro[np.isnan(Ro)] = 0
     Ro[Ro < 0] = 0
 
-    basic_q_formal = param["basic_q"]
+    basic_q_formal = param["q0"]
     if (type_housing == 'backyard') | (type_housing == 'informal'):
-        param["basic_q"] = 0   
+        param["q0"] = 0   
 
     #Estimate bid rents using precalculate matrix
     if type_housing == 'formal':
@@ -33,11 +33,11 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     elif type_housing == 'backyard':
         amenite = amenite * param["amenity_backyard"]
         #R_mat = definit_R_informal(Uo, param, trans_tmp_cout_generalise, income1, amenite)
-        R_mat = 1 / param["size_shack"] * (income1 - trans_tmp_cout_generalise[:,:,0] - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["size_shack"] - param["basic_q"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"])) 
+        R_mat = 1 / param["shack_size"] * (income1 - trans_tmp_cout_generalise - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["shack_size"] - param["q0"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"])) 
         R_mat[job.backyard == 0,:] = 0
     elif type_housing == 'informal':
         amenite = amenite * param["amenity_settlement"]
-        R_mat = 1 / param["size_shack"] * (income1 - trans_tmp_cout_generalise[:,:,0] - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["size_shack"] - param["basic_q"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"]))        
+        R_mat = 1 / param["shack_size"] * (income1 - trans_tmp_cout_generalise - (np.transpose(np.matlib.repmat(np.transpose(Uo), n = 1, m=income1.shape[1]))/(amenite * (param["shack_size"] - param["q0"]) ** param["coeff_beta"])) ** (1 / param["coeff_alpha"]))        
         R_mat[job.settlement == 0,:] = 0
 
     #R_mat = single(R_mat)
@@ -60,11 +60,11 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     #Estimate housing
     if type_housing == 'formal':
         #hous = param["coeff_beta"] * (income1[quel_mat] - price_trans[quel_mat]) / R + param["coeff_alpha"] * param["basic_q"]
-        hous = param["coeff_beta"] * ((income1[quel_mat] - price_trans[quel_mat]) / R) + param["coeff_alpha"] * param["basic_q"] #Demande de logements correspondant au loyer
+        hous = param["coeff_beta"] * ((income1[quel_mat] - price_trans[quel_mat]) / R) + param["coeff_alpha"] * param["q0"] #Demande de logements correspondant au loyer
     elif type_housing == 'backyard':
-        hous = param["size_shack"] * np.ones((4194))
+        hous = param["shack_size"] * np.ones(sum(selected_pixels))
     elif type_housing == 'informal':
-        hous = param["size_shack"] * np.ones((4194))
+        hous = param["shack_size"] * np.ones(sum(selected_pixels))
 
     hous[hous <  0] = 0
     hous[np.isinf(hous)] = np.nan
@@ -129,31 +129,32 @@ def coeur_poly2(Uo, param, option, trans_tmp_cout_generalise, grid, transaction_
     elif type_housing == 'backyard':
         housing = 1000000 * housing_backyard(R, grid, param, basic_q_formal, income1, price_trans_RDP)
     elif type_housing == 'informal':
-        if option["double_storey_shacks"] == 0:
-            housing = 1000000 * np.ones((4194))
+        if param["double_storey_shacks"] == 0:
+            housing = 1000000 * np.ones(sum(selected_pixels))
             housing[R == 0] = 0
-        elif option["double_storey_shacks"] == 1:
+        elif param["double_storey_shacks"] == 1:
             housing = 1000000 * housing_informal(R, grid, param, job, income1, price_trans, proba)
 
-    limite1 = (income1 > price_trans) & (np.transpose(proba1) > 0) & (~np.isnan(price_trans)) & (R_mat > 0)
-    proba1 = np.transpose(proba1) * limite1
+    #limite1 = (income1 > price_trans) & (np.transpose(proba1) > 0) & (~np.isnan(price_trans)) & (R_mat > 0)
+    #proba1 = np.transpose(proba1) * limite1
     
     limite2 = (income1 > price_trans) & (np.transpose(proba2) > 0) & (~np.isnan(price_trans)) & (R_mat > 0)
     proba2 = np.transpose(proba2) * limite2
 
-    people_init1 = housing / hous * (np.sum(limite1,0)>0)
-    people_init1[np.isnan(people_init1)] = 0
-    people_init_vrai1 = people_init1 * coeff_land_ici * 0.5 ** 2
+    #people_init1 = housing / hous * (np.sum(limite1,0)>0)
+    #people_init1[np.isnan(people_init1)] = 0
+    #people_init_vrai1 = people_init1 * coeff_land_ici * 0.5 ** 2
     
     people_init2 = housing / hous * (np.sum(limite2,0)>0)
     people_init2[np.isnan(people_init2)] = 0
     people_init_vrai2 = people_init2 * coeff_land_ici * 0.5 ** 2
 
-    people_travaille1 = people_init_vrai1 * proba1
-    people_travaille1[np.isnan(people_travaille1)] = 0
-    job_simul1 = np.sum(people_travaille1, axis = 1) #Entre people_init_vrai et job_simul, il y a des gens qui se sont perdus ^^'
+    #people_travaille1 = people_init_vrai1 * proba1
+    #people_travaille1[np.isnan(people_travaille1)] = 0
+    #job_simul1 = np.sum(people_travaille1, axis = 1) #Entre people_init_vrai et job_simul, il y a des gens qui se sont perdus ^^'
     
-    people_travaille2 = people_init_vrai2 * proba2
+    #people_travaille2 = people_init_vrai2 * proba2
+    people_travaille2 = np.matlib.repmat(people_init_vrai2, 18, 1) * proba2
     people_travaille2[np.isnan(people_travaille2)] = 0
     job_simul2 = np.sum(people_travaille2, axis = 1)
     

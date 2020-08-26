@@ -22,6 +22,9 @@ class ImportEmploymentData:
         TAZ = pd.read_csv('./2. Data/Basile data/TAZ_amp_2013_proj_centro2.csv') #Number of jobs per Transport Zone (TZ)
         TAZ2013_centre = pd.read_csv('./2. Data/Basile data/TAZ_final.csv') #The 44 main employment centers
     
+        #Alt
+        #data_job_2015 = pd.read_csv('./2. Data/Basile data/BASE_2015.csv') #Employment centers 2015
+
         # %% Coordinates of employment centers
         listou = copy.deepcopy(TAZ2013_centre.TAZ2013_centre)
         Xou = np.zeros(len(listou))
@@ -40,7 +43,10 @@ class ImportEmploymentData:
      
         # %% Data on employment centers of each income group            
         J_data = np.transpose([TAZ.Ink1/3, TAZ.Ink1/3, TAZ.Ink1/3, TAZ.Ink2/3, TAZ.Ink2/3, TAZ.Ink2/3, TAZ.Ink3/3, TAZ.Ink3/3, TAZ.Ink3/3, TAZ.Ink4/3, TAZ.Ink4/3, TAZ.Ink4/3])
-    
+        
+        #Alt
+        #J_data = np.transpose([data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12, data_job_2015.JOBS/12]) #Number of employees in each TZ for the 12 income classes
+        #ID_centre = data_job_2015.TZ2015
         # %% Total number of households and average income per class (12 classes)
         year_income_distribution = [x + param["baseline_year"] for x in t]
         if len(t) == 1:
@@ -80,17 +86,15 @@ class ImportEmploymentData:
 
         # %% Selection of employment centers to keep
         poly_quel = np.zeros(len(poly_code_emploi_init), 'bool')
-        if option["polycentric"] == 1:   #On choisit manuellement 6 centres d'emploi à garder, mais on pourrait en prendre plus
-        
-            #option A: 185 employment centers
-            #for i in range(1, int(len(poly_code_emploi_init) / param["multiple_class"]) + 1):
-                #if ((Jval1[0, param["multiple_class"] * i - 1] + Jval1[0, param["multiple_class"] * i - 2] + Jval1[0, param["multiple_class"] * i - 3] + Jval1[0, param["multiple_class"] * i - 4]) > 2478):
-                    #poly_quel[param["multiple_class"] * i - 1] = np.ones(1, 'bool')
-                    #poly_quel[param["multiple_class"] * i - 2] = np.ones(1, 'bool')
-                    #poly_quel[param["multiple_class"] * i - 3] = np.ones(1, 'bool')
-                    #poly_quel[param["multiple_class"] * i - 4] = np.ones(1, 'bool')
-
-            #option B: 6 employment centers
+        if option["nb_employment_center"] == 185:   #On choisit manuellement 6 centres d'emploi à garder, mais on pourrait en prendre plus
+            for i in range(1, int(len(poly_code_emploi_init) / param["nb_of_income_classes"]) + 1):
+                if ((Jval1[0, param["nb_of_income_classes"] * i - 1] + Jval1[0, param["nb_of_income_classes"] * i - 2] + Jval1[0, param["nb_of_income_classes"] * i - 3] + Jval1[0, param["nb_of_income_classes"] * i - 4]) > 2478):
+                    poly_quel[param["nb_of_income_classes"] * i - 1] = np.ones(1, 'bool')
+                    poly_quel[param["nb_of_income_classes"] * i - 2] = np.ones(1, 'bool')
+                    poly_quel[param["nb_of_income_classes"] * i - 3] = np.ones(1, 'bool')
+                    poly_quel[param["nb_of_income_classes"] * i - 4] = np.ones(1, 'bool')
+                    nb_centres = 185
+        elif option["nb_employment_center"] == 6:
             poly_quel[poly_code_emploi_init == 5101] = np.ones(1, 'bool') #CBD
             poly_quel[poly_code_emploi_init == 2002] = np.ones(1, 'bool') #Bellville
             poly_quel[poly_code_emploi_init == 1201] = np.ones(1, 'bool') #Epping
@@ -99,9 +103,55 @@ class ImportEmploymentData:
             poly_quel[poly_code_emploi_init == 5523] = np.ones(1, 'bool') #Table View + Century City
             poly_quel[Jval1[0,:] <= 0] = np.zeros(1, 'bool')
             nb_centres = 6
-        elif option["polycentric"] == 0: 
+            
+            #Alt
+            #Jx_zone = np.empty(6)
+            #Jy_zone = np.empty(6)
+            #Jobs_zone = np.empty(6)
+            #CBD
+            #zone = ((data_job_2015.MZ2015 > 0) & (data_job_2015.MZ2015 < 5)) | (data_job_2015.MZ2015 == 8)
+            #Jx_zone[0] = sum(data_job_2015.JOBS[zone] * data_job_2015.Xcoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jy_zone[0] = sum(data_job_2015.JOBS[zone] * data_job_2015.Ycoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jobs_zone[0] = sum(data_job_2015.JOBS[zone])
+            
+            #Bellville
+            #zone = (data_job_2015.MZ2015 == 11) | (data_job_2015.MZ2015 == 19) | (data_job_2015.MZ2015 == 20)
+            #Jx_zone[1] = sum(data_job_2015.JOBS[zone] * data_job_2015.Xcoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jy_zone[1] = sum(data_job_2015.JOBS[zone] * data_job_2015.Ycoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jobs_zone[1] = sum(data_job_2015.JOBS[zone])
+    
+            #Epping - Airport
+            #zone = (data_job_2015.MZ2015 == 12) | (data_job_2015.MZ2015 == 21)  | (data_job_2015.MZ2015 == 29)
+            #Jx_zone[2] = sum(data_job_2015.JOBS[zone] * data_job_2015.Xcoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jy_zone[2] = sum(data_job_2015.JOBS[zone] * data_job_2015.Ycoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jobs_zone[2] = sum(data_job_2015.JOBS[zone])
+            
+            #Claremont-Rondebosch
+            #zone = (data_job_2015.MZ2015 == 7) | (data_job_2015.MZ2015 == 15)
+            #Jx_zone[3] = sum(data_job_2015.JOBS[zone] * data_job_2015.Xcoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jy_zone[3] = sum(data_job_2015.JOBS[zone] * data_job_2015.Ycoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jobs_zone[3] = sum(data_job_2015.JOBS[zone])
+            
+            #Strand
+            #zone = (data_job_2015.MZ2015 == 35)
+            #Jx_zone[4] = sum(data_job_2015.JOBS[zone] * data_job_2015.Xcoord[zone] / 1000)  / sum(data_job_2015.JOBS[zone])
+            #Jy_zone[4] = sum(data_job_2015.JOBS[zone] * data_job_2015.Ycoord[zone] / 1000)  / sum(data_job_2015.JOBS[zone])
+            #Jobs_zone[4] = sum(data_job_2015.JOBS[zone])
+    
+            #Century City
+            #zone = (data_job_2015.MZ2015 == 5) | (data_job_2015.MZ2015 == 6)
+            #Jx_zone[5] = sum(data_job_2015.JOBS[zone] * data_job_2015.Xcoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jy_zone[5] = sum(data_job_2015.JOBS[zone] * data_job_2015.Ycoord[zone] / 1000) / sum(data_job_2015.JOBS[zone])
+            #Jobs_zone[5] = sum(data_job_2015.JOBS[zone])
+    
+        elif option["nb_employment_center"] == 1: 
             poly_quel[poly_code_emploi_init == 5101] = np.ones(1, 'bool') #CBD
             nb_centres = 1
+            
+            #Alt
+            #Jx_zone = grid.x_center
+            #Jy_zone = grid.y_center
+            #Jobs_zone = sum(data_job_2015.JOBS)
             
         # %% Rescale to include for each center all the jobs located in a defined buffer zone
         distance_buffer = 4
@@ -111,21 +161,22 @@ class ImportEmploymentData:
         
         for i in range(0, len(year_income_distribution)):
             for j in range(0, param["nb_of_income_classes"]):
-                Jval_i = Jval1[i,:] #Nombre de personnes de chaque clase qui vont travailler dans chaque centre d'emploi pour l'année i
+                Jval_i = Jval1[i,:] #Nombre de personnes de chaque classe qui vont travailler dans chaque centre d'emploi pour l'année i
                 class_i = classes[i,:] #Aide à interpréter Jval_i : à quelle classe est-ce que chaque colonne correspond ?
                 poly_class_i = classes[i, poly_quel] #à quelle classe est-ce que chaque colonne correspond ? Seulement pour les centres d'emploi qu'on a retenus
                 Jval_temp[i, poly_class_i == j] = np.dot(Jval_i[class_i == j], (np.transpose(Jdistance[(poly_class_i == j),][:,(class_i == j)]) < distance_buffer)) #Nombre de personnes d'une classe donnée qui vont travailler dans chaque centre d'emploi (ou à moins de 4 km) pour l'année i
                 sum_class_j[i, j] = sum(Jval_temp[i, poly_class_i == j])
 
         # %% Remove the employment centers that are not significant enough
-        ID_centre_poly_quel = ID_centre_poly[poly_quel]
-        quel_temp = np.ones(sum(poly_quel), 'bool')
-        for j in range(0, param["nb_of_income_classes"]):
-            quel_temp = np.where((Jval_temp[0,] / np.concatenate(np.matlib.repmat(sum_class_j[0,], nb_centres, 1)) < 0.1), np.zeros(1, 'bool'), quel_temp) #Si moins de 10% des gens vont travailler dans ce centre d'emploi, on ne le compte pas
-        Jval_temp = Jval_temp[:, quel_temp]
-        ID_centre_poly_remove = ID_centre_poly_quel[quel_temp == np.zeros(1, 'bool')]
-        for j in range(0, len(poly_quel)):
-            poly_quel[j] = np.where((ID_centre_poly[j] in ID_centre_poly_remove), np.zeros(1, 'bool'), poly_quel[j])
+        if option["nb_employment_center"] == 6:    
+            ID_centre_poly_quel = ID_centre_poly[poly_quel]
+            quel_temp = np.ones(sum(poly_quel), 'bool')
+            for j in range(0, param["nb_of_income_classes"]):
+                quel_temp = np.where((Jval_temp[0,] / np.concatenate(np.matlib.repmat(sum_class_j[0,], nb_centres, 1)) < 0.1), np.zeros(1, 'bool'), quel_temp) #Si moins de 10% des gens vont travailler dans ce centre d'emploi, on ne le compte pas
+            Jval_temp = Jval_temp[:, quel_temp]
+            ID_centre_poly_remove = ID_centre_poly_quel[quel_temp == np.zeros(1, 'bool')]
+            for j in range(0, len(poly_quel)):
+                poly_quel[j] = np.where((ID_centre_poly[j] in ID_centre_poly_remove), np.zeros(1, 'bool'), poly_quel[j])
         poly_Jx = Jx[poly_quel]
         poly_Jy = Jy[poly_quel]
         poly_classes = classes[:, poly_quel]
@@ -140,22 +191,12 @@ class ImportEmploymentData:
             Jval2[:, poly_classes[0,:] == j] = Jval_temp[:, poly_classes[0,:] == j] * np.transpose(numpy.matlib.repmat(total_class[:, j] /sum_class_quel[:, j], nb_centre_quel, 1))
         
         # %% Export 
-        annee_Jval = year_income_distribution
-        poly_total_hh_class = total_class
-        poly_annee = annee_Jval
-        increment = range(0, len(poly_avg_inc[0, :]))
-        poly_referencement = increment
-        poly_garde = poly_quel
-        poly_code_emploi_poly = poly_code_emploi_init[poly_quel]
-        poly_avg_inc = avg_inc[:, poly_quel]
-        poly_classes = classes[:, poly_quel]
         increment = np.array(list(range(0, len(TAZ.TZ2013))))
         corresp = np.zeros(len(poly_Jx))
         for index1 in range(0, len(poly_Jx)):
-            corresp[index1] = increment[TAZ.TZ2013 == poly_code_emploi_poly[index1]]
-        poly_corresp = np.transpose(corresp)
-        poly_Jval_pour_garde = Jval1
-        poly_Jval = Jval2
+            corresp[index1] = increment[TAZ.TZ2013 == poly_code_emploi_init[poly_quel][index1]]
+
+
 
         self.code_emploi_init_simple = poly_code_emploi_init_simple #List of the employment centers
         self.code_emploi_init = poly_code_emploi_init #List of the employment centers * the number of income groups
@@ -163,16 +204,16 @@ class ImportEmploymentData:
         self.class_i = poly_class_i #List of the income groups that we keep
         self.Jx = poly_Jx #X coordinates of the employment centers that we keep
         self.Jy = poly_Jy #Y coordinates of the employment centers that we keep
-        self.avg_inc = poly_avg_inc #Average income for each year and each employment center
-        self.total_hh_class = poly_total_hh_class #Number of each household working in each employment center for each year
-        self.annee = poly_annee #Years of the analysis
-        self.referencement = poly_referencement #Number of income groups
-        self.garde = poly_garde #Employment centers and income groups that we keep
-        self.code_emploi_poly = poly_code_emploi_poly #Code of the employment centers that we keep
-        self.classes = poly_classes #Income groups that we keep, for each year
-        self.corresp = poly_corresp #Code TAZ auquel ça correspond
-        self.Jval_pour_garde = poly_Jval_pour_garde
-        self.Jval = poly_Jval #Number of households of each income group per employment center and per year
+        self.avg_inc = avg_inc[:, poly_quel] #Average income for each year and each employment center
+        self.total_hh_class = total_class #Number of each household working in each class for each year
+        self.annee = year_income_distribution #Years of the analysis
+        self.referencement = range(0, len(poly_avg_inc[0, :])) #Number of income groups
+        self.garde = poly_quel #Employment centers and income groups that we keep
+        self.code_emploi_poly = poly_code_emploi_init[poly_quel] #Code of the employment centers that we keep
+        self.classes = classes[0, poly_quel] #Income groups that we keep, for each year
+        self.corresp = np.transpose(corresp) #Code TAZ auquel ça correspond
+        self.Jval_pour_garde = Jval1
+        self.Jval = Jval2 #Number of households of each income group per employment center and per year
         self.formal = np.array([1, 1, 1, 1]) #Select which income class can live in formal settlements
         self.backyard = np.array([1, 1, 0, 0]) #Select which income class can live in backyard settlements
         self.settlement = np.array([1, 1, 0, 0]) #Select which income class can live in informal settlements

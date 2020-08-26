@@ -15,14 +15,14 @@ def choice_param():
     #Parameters of the utility fonction
     param["coeff_beta"] = 0.25
     param["coeff_alpha"] = 1 - param["coeff_beta"]
-    param["q0"] = 40
+    param["q0"] = 4.1
     
     #Parameters of the housing production fonction
-    param["coeff_A"] = 0.69
-    param["coeff_b"] = 0.55
+    param["coeff_A"] = 0.04
+    param["coeff_b"] = 0.25
     param["coeff_a"] = 1 - param["coeff_b"]
-    param["depreciation_rate"] = 0.03
-    param["interest_rate"] = 0.0250
+    param["depreciation_rate"] = 0.025
+    param["interest_rate"] = 0.05
     
     #Land-use, housing constraints and informal settlements
     param["max_land_use"] = 0.7
@@ -42,19 +42,21 @@ def choice_param():
 
     #Multiple income classes
     param["nb_of_income_classes"] = 4
-    param["income_distribution"] = np.array([0, 1, 1, 1, 1, 2, 2, 3, 4, 4, 4, 4])
+    param["income_distribution"] = np.array([0, 1, 1, 1, 1, 2, 3, 3, 4, 4, 4, 4])
 
     #Transportation
     param["waiting_time_metro"] = 10 #minutes
-    param["walking_speed"] = 5 #km/h
-    param["transaction_cost2011"] = 700 #Rands per m2 per year
-    param["household_size"] = [1.14, 1.94, 1.94, 1.94] #Household size
-    param["lambda"] = 1500
+    param["walking_speed"] = 4 #km/h
+    param["transaction_cost2011"] = 807 #Rands per m2 per year (agricultural rent)
+    param["household_size"] = [1.14, 1.94, 1.92, 1.94] #Household size (accounting for unemployment rate)
+    param["lambda"] = 1500 #4.27
     param["cost_of_time"] = 1
     
     #Solver parameters
-    param["max_iter"] = 400
+    param["max_iter"] = 5000
     param["precision"] = 0.025
+    param["iter_calc_lite"] = 1
+    param["time_invest_h"] = 10
     
     print('*** Parameters imported succesfully ***')
     

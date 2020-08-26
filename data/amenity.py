@@ -94,34 +94,28 @@ class Amenity:
         # %% Calibration of the parameters of the utility function
         
         #Data preparation
-        print(sum(reliable_transport > 0.95)) #1039
-        print(sum(trans_avg < 0.6 * np.transpose(households_data.income_SP_2011))) #908
-        print(sum((net_income / amenite_rent_HFA) > 100)) #305
-        print(sum(price > 0)) #358
-        print(sum((classes >= 1))) #918
-        print(sum(amenite_rent_HFA > np.nanquantile(amenite_rent_HFA, 0.1))) #317
-        print(sum(amenite_rent_HFA < np.nanquantile(amenite_rent_HFA, 0.9))) #317
-        print(sum(construction > 0.01)) #756
-        print(sum(np.transpose(households_data.distance_SP_2011) < 15)) #244
-        quel_general = (reliable_transport > 0.95) & (trans_avg < 0.6 * np.transpose(households_data.income_SP_2011)) & ((net_income / amenite_rent_HFA) > 100) & (price > 0) & (classes >= 2) & (amenite_rent_HFA > np.nanquantile(amenite_rent_HFA, 0.1)) & (amenite_rent_HFA < np.nanquantile(amenite_rent_HFA, 0.9)) & (construction > 0.01) & (np.transpose(households_data.distance_SP_2011) < 15) #What SP do we keep? 
+        quel_general = (amenite_rent_HFA < np.nanquantile(amenite_rent_HFA, 0.9)) & (reliable_transport > 0.95) & (price > 0) & (classes >= 1) & (~np.isnan(amenite_rent_HFA)) #What SP do we keep? 
+        quel_general = (reliable_transport > -1)
         net_income_reg = net_income[quel_general]
         amenite_rent_HFA_reg = amenite_rent_HFA[quel_general]
         dwelling_size_reg = np.transpose(dwelling_size[quel_general])
 
         #STEP1: ESTIMATION OF BASIC_Q AS THE MINIMUM
-        amenity_basic_q = np.nanmin(dwelling_size[households_data.backyard_SP_2011 + households_data.informal_SP_2011 < 1])
+        amenity_basic_q = np.nanmin(dwelling_size[households_data.informal_SP_2011 < 1])
         #amenity_basic_q = 31.6
         
         #STEP2: CALIBRATION OF BETA
-        lm = LinearRegression()
-        model = lm.fit(pd.DataFrame(net_income_reg / amenite_rent_HFA_reg - amenity_basic_q), pd.DataFrame(dwelling_size_reg - amenity_basic_q)) #Formule 5.28
-        amenity_coeff_beta = model.coef_
-        #amenity_coeff_beta = 0.25
+        Y = dwelling_size_reg - param["q0"]
+        X = net_income_reg / amenite_rent_HFA_reg - param["q0"]
+        model = sm.OLS(Y, X, missing='drop').fit() #Formule 5.28
+        model.summary()
+        amenity_coeff_beta = model.params.squeeze()
+        amenity_coeff_beta = 0.25
     
         #STEP3: CALIBRATION OF THE WEIGHTS ON AMENITIES  
     
         #Regression on amenities
-        residu = np.abs(amenity_coeff_beta ** amenity_coeff_beta * (1 - amenity_coeff_beta) ** (1 - amenity_coeff_beta) * (income_class - amenity_trans - amenity_basic_q * amenite_rent_HFA)) / (amenite_rent_HFA) ** (amenity_coeff_beta) #Formule 5.27 de Basile: U/A
+        residu = np.abs(amenity_coeff_beta ** amenity_coeff_beta * (1 - amenity_coeff_beta) ** (1 - amenity_coeff_beta) * (income_class - amenity_trans - param["q0"] * amenite_rent_HFA)) / ((amenite_rent_HFA) ** (amenity_coeff_beta)) #Formule 5.27 de Basile: U/A
         ratio_utility = np.zeros((param["nb_of_income_classes"] - 1))
         utility_normalized = np.ones((len(classes)))
         for i in range(0, param["nb_of_income_classes"] - 1):
@@ -134,13 +128,12 @@ class Amenity:
             ratio_utility_u1 = np.prod(ratio_utility, where = (~np.isnan(ratio_utility) & ~np.isinf(ratio_utility) & (ratio_utility > 0)))
             utility_normalized[classes == i] = ratio_utility_u1  #Estimation of the ratio of utilities for each income class and the one above
             
-        residual_reg = amenity_coeff_beta * np.log(np.abs(amenite_rent_HFA)) - np.log(np.abs(amenity_coeff_beta ** amenity_coeff_beta * (1 - amenity_coeff_beta) ** (1 - amenity_coeff_beta) * (income_class - amenity_trans - amenity_basic_q * amenite_rent_HFA))) + np.log(utility_normalized) #Estimation de log(A/u)
+        residual_reg = amenity_coeff_beta * np.log(np.abs(amenite_rent_HFA)) - np.log(np.abs(amenity_coeff_beta ** amenity_coeff_beta * (1 - amenity_coeff_beta) ** (1 - amenity_coeff_beta) * (income_class - amenity_trans - param["q0"] * amenite_rent_HFA))) + np.log(utility_normalized) #Estimation de log(A/u)
         residual_reg = residual_reg.squeeze()
         residual_reg[amenite_rent_HFA <= 0] = np.nan
-        residual_reg[(income_class - amenity_trans - amenity_basic_q * amenite_rent_HFA) <= 0] = np.nan
+        residual_reg[(income_class - amenity_trans - param["q0"] * amenite_rent_HFA) <= 0] = np.nan
 
-        #quel = (reliable_transport==1) & (~np.isnan(amenite_rent_HFA))
-        quel = (~np.isnan(amenite_rent_HFA) & (~np.isnan(residual_reg)))
+        quel = (~np.isnan(amenite_rent_HFA) & (~np.isnan(residual_reg))) & (reliable_transport==1) & (~np.isnan(amenite_rent_HFA))
 
         amenities_sp = pd.read_csv('./2. Data/Basile data/SP_amenities.csv')
 
@@ -162,10 +155,12 @@ class Amenity:
         table_regression = pd.DataFrame(data= np.transpose([np.transpose(residual_reg), amenities_sp.distance_distr_parks < 2, amenities_sp.distance_ocean < 2, ((amenities_sp.distance_ocean < 4) & (amenities_sp.distance_ocean > 2)), amenities_sp.distance_world_herit < 2, amenities_sp.distance_urban_herit < 2, amenities_sp.distance_UCT < 2, airport_cone2, np.log(1 + amenities_sp.slope), amenities_sp.distance_train < 2, amenities_sp.distance_protected_envir < 2, np.log(1 + sp_distance_rdp["SP_distance_RDP"]).squeeze(), amenities_sp.distance_power_station < 2]))
         table_reg = table_regression[quel]
         table_reg.columns = ['residu', 'distance_distr_parks', 'distance_ocean', 'distance_ocean2', 'distance_world_herit', 'distance_urban_herit', 'distance_UCT', 'airport_cone2', 'slope', 'distance_train', 'distance_protected_envir', 'RDP_proximity', 'distance_power_station']
-        #model_spec = 'residu ~ distance_distr_parks + distance_ocean + distance_urban_herit + airport_cone2 + slope + distance_protected_envir + RDP_proximity' #+ distance_power_station'
-        lm = LinearRegression()
-        model_amenity = lm.fit(pd.DataFrame(table_reg.residu), table_reg[["distance_distr_parks", "distance_ocean", "distance_ocean2", "distance_urban_herit", "airport_cone2", "slope", "distance_protected_envir", "distance_train"]]) #Allows to find the weight of each amenity
-    
+        Y = table_reg.residu
+        X = table_reg[["distance_distr_parks", "distance_ocean", "distance_ocean2", "distance_urban_herit", "airport_cone2", "slope", "distance_protected_envir", "distance_train"]]
+        X = sm.add_constant(X)
+        model_amenity = sm.OLS(Y, X).fit()
+        model_amenity.summary()
+        
         #Extrapolation at the grid level
         grid_amenity = pd.read_csv('./2. Data/Basile data/grid_amenities.csv', sep = ',')
         #grid_amenity = pd.read_csv('./2. Data/grid_amenity.csv', sep = ';')
@@ -186,20 +181,19 @@ class Amenity:
 
         table_predictors = np.transpose(pd.DataFrame(data= ([grid_amenity.distance_distr_parks < 2, grid_amenity.distance_ocean < 2, ((amenities_sp.distance_ocean < 4) & (amenities_sp.distance_ocean > 2)), grid_amenity.distance_urban_herit < 2, airport_cone2, np.log(1 + grid_amenity.slope), grid_amenity.distance_protected_envir < 2, amenities_sp.distance_train < 2])))
 
-        estimated_amenities = (amenity_coeff_beta[0, 0] * (np.transpose(model_amenity.coef_) * table_predictors)) # A vérifier  
+        estimated_amenities = (amenity_coeff_beta * (np.array([model_amenity.params[0], model_amenity.params[1], model_amenity.params[2], model_amenity.params[3], model_amenity.params[4], model_amenity.params[5], model_amenity.params[6], model_amenity.params[7]]) * table_predictors)) # A vérifier  
         estimated_amenities = np.exp(estimated_amenities.astype(float))
         
-        print(('Regression on the exogenous amenities - Rquared = %d',  lm.score(pd.DataFrame(table_reg.residu), table_reg[["distance_distr_parks", "distance_ocean", "distance_ocean2", "distance_urban_herit", "airport_cone2", "slope", "distance_protected_envir", "distance_train"]])))
-        amenity_utility = np.matlib.repmat(ratio_utility, 8, 1) * np.transpose(np.matlib.repmat(np.exp(model_amenity.intercept_), 3, 1)) #Compute utilities using amenities and their weights
+        amenity_utility = np.matlib.repmat(ratio_utility, 8, 1) * np.transpose(np.matlib.repmat(np.exp(model_amenity.params[0]), 3, 1)) #Compute utilities using amenities and their weights
 
         # %% Calibration of the construction function (RH = A.b.H^b)
 
         construction = households_data.formal_dens_HFA_SP / param["max_land_use"]
 
         quel_construct = (construction > 0.05) & (construction < 3) & (np.transpose(households_data.distance_SP_2011) < 20) & (classes > 0) & (amenite_rent_HFA > np.nanquantile(amenite_rent_HFA, 0.1)) & (amenite_rent_HFA < np.nanquantile(amenite_rent_HFA, 0.9))
-        lm = LinearRegression()
-        model_construction = lm.fit(pd.DataFrame(np.log(price[quel_construct])), pd.DataFrame(np.log(construction[quel_construct] * 1000000)))
-
+        model_construction = sm.OLS(np.log(price[quel_construct]), np.log(construction[quel_construct] * 1000000), missing = 'drop').fit()
+        model_construction.summary()
+        
         amenity_coeff_b = model_construction.coef_
         #amenity_coeff_b = 0.25
         amenity_coeff_a = 1 - amenity_coeff_b
