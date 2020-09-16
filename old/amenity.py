@@ -21,7 +21,7 @@ class Amenity:
         
         self
         
-    def amenity_calibration_parameters_v3(self, grid, param, macro, job, option, trans, households_data, land, t_amenity):
+    def calibration(self, grid, param, macro, job, option, trans, households_data, land, t_amenity):
 
         # %% Preparation of data (at the SP_level)
         

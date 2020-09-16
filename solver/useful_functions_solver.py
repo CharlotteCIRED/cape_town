@@ -96,54 +96,71 @@ def utilite_amenite(Z,hous, param, amenite, revenu,Ro):
     return utili
 
 
-"""
-def courbes_ici(poly,job_simul_total,Jval,grille,rent,index_t,val_max, val_max_no_abs, val_moy,nombre,loyer_de_ref,precision):
-
-    subplot(2,3,1)
-    hold on
-    plot(val_max(val_max~=0))
-    plot(index_t,ylim, 'LineStyle','--', 'Color',[.7 .7 .7] )
-    ylim([0 max(val_max)])
-    title('max error')
-    xlabel('number of iterations')
-    ylabel('max error for the centers / abs')
-
-    subplot(2,3,2)
-    hold on
-    plot(val_moy(val_moy~=0))
-    plot(index_t,ylim, 'LineStyle','--', 'Color',[.7 .7 .7] )
-    ylim([0 max(val_moy)])
-    title('mean error')
-    xlabel('number of iterations')
-    ylabel('mean error in the employment centers')
+def InterpolateIncomeNetOfCommutingCostsEvolution(trans,param,t):
+    #computes transport generalized cost for a given year, by interpolation, using variable trans as input
     
-    subplot(2,3,3)
-    hold on
-    plot(nombre(val_moy~=0))
-    line([index_t index_t], ylim);
-    plot(index_t,ylim, 'LineStyle','--', 'Color',[.7 .7 .7] )
-    ylim([0 max(nombre)+1])
-    title('numbers of errors')
-    xlabel('number of iterations')
-    ylabel('number of unsolved employment centers')
+    index1, index2, ponder1, ponder2 = CreatePonderation(t + param["baseline_year"], trans.yearTransport)
+    return ponder1 * trans.incomeNetOfCommuting[:,:,index1] + ponder2 * trans.incomeNetOfCommuting[:,:,index2]
 
-    subplot(2,3,4)
-    hold on
-    R_graph(:) = rent(index_t,1,:);
-    plot(grille.dist(R_graph>loyer_de_ref),R_graph(R_graph>loyer_de_ref)/12,'.')
-    plot(grille.dist(R_graph<=loyer_de_ref),R_graph(R_graph<=loyer_de_ref)/12,'.','Color',[1 0.6 0.6])
-    title('monthly rent and Ro');
-    xlim([0 max(grille.dist)+1])
-    xlabel('distance from the CBD')
-    ylabel('loyer (?/m?/mois)')
+def CreatePonderation(value, vector):
+    vectorCenter = vector - value
+    valueMin = np.nanmin(np.abs(vectorCenter))
+    index = np.argmin(np.abs(vectorCenter))
 
-    subplot(2,3,5)
-    hold on
-    plot(val_max_no_abs(val_max_no_abs~=0))
-    plot(index_t,ylim, 'LineStyle','--', 'Color',[.7 .7 .7] )
-    ylim([-1 1])
-    title('max error')
-    xlabel('number of iteration')
-    ylabel('max error / no abs')
+    if valueMin == 0:
+        index1 = index
+        index2 = index
+        ponder1 = 1
+        ponder2 = 0
+    else:
+        vecteurNeg = copy.deepcopy(vectorCenter)
+        vecteurNeg[vecteurNeg>0] = np.nan
+        close1 = np.nanmax(vecteurNeg)
+        index1 = np.argmax(vecteurNeg)
+    
+        vecteurPos = copy.deepcopy(vectorCenter)
+        vecteurPos[vecteurPos<0] = np.nan
+        close2 = np.nanmin(vecteurPos)
+        index2 = np.argmin(vecteurPos)
+    
+        ponder1 = np.abs(close1)/(close2 - close1)
+        ponder2 = 1-ponder1
+    
+    return index1, index2, ponder1, ponder2
 
-    toc() """
+def InterpolateInterestRateEvolution(macro_data, T):
+    numberYearsInterestRate = 3
+    interestRateNYears = macro_data.interest_rate(np.arange(T - numberYearsInterestRate, T))
+    interestRateNYears[interestRateNYears < 0] = np.nan
+    interestRate = np.nanmean(interestRateNYears)/100
+    return interestRate
+
+def InterpolatePopulationEvolution(macro_data,t):
+    return macro_data.population(t)
+
+def InterpolateCoefficientConstruction(option, param, macro_data, income):
+
+    coeff_A = param["coeff_A"]
+    coeff_b = param["coeff_b"]
+
+    return (income / macro_data.income_year_reference)**(-coeff_b) *coeff_A
+
+def InterpolateLandCoefficientEvolution(land,option,param,T):
+    landBackyard = land.spline_land_backyard(T)
+    landRDP = land.spline_land_RDP(T)
+
+    coeffLandPrivate = (land.spline_land_constraints(T) - landBackyard - land.informal - landRDP) * param["max_land_use"]
+    coeffLandPrivate[coeffLandPrivate < 0] = 0
+    coeffLandBackard = landBackyard * param["max_land_use_backyard"]
+    coeffLandRDP = landRDP
+    coeffLandSettlement = land.informal * param["max_land_use_settlement"]
+
+    return np.array([coeffLandPrivate, coeffLandBackard, coeffLandSettlement, coeffLandRDP])
+
+def InterpolateHousingLimitEvolution(land, option, param, T):
+    return (T + param["baseline_year"] < 2018) * land.housing_limit + (T + param["baseline_year"] >= 2018) * land.housing_limit
+
+def InterpolateAgriculturalRentEvolution(option, param, macro_data, t):
+    output = macro_data.agricultural_rent(t)
+    coeffKappaT = InterpolateCoefficientConstruction(option, param, macro_data, macro_data.income(t))
+    return output ** (param["coeff_a"]) * (param["depreciation_rate"] + InterpolateInterestRateEvolution(macro_data, t)) / (coeffKappaT * param["coeff_b"] ** param["coeff_b"])

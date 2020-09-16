@@ -33,6 +33,7 @@ def SP_to_grid_2011_1(data_SP, SP_Code, grid):
                 
     return data_grid
 
+
 def SP_to_grid_2011_2(data_SP, SP_Code, grid):
     
     grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP_intersect.csv', sep = ';')  
@@ -194,4 +195,108 @@ def interest_rate(macro_data, T):
     interest_rate_3_years = macro_data.spline_notaires(range(int(T) - number_years_interest_rate + 1, int(T)))
     interest_rate_3_years[interest_rate_3_years < 0] = np.nan
     return np.nanmean(interest_rate_3_years)/100
+
+
+def InterpolateIncomeEvolution(macro_data, param, option, grid, job, T):
+    income_tmp = interp1d(job.year - param["baseline_year"], np.transpose(job.averageIncomeGroup))
+    income_tmp = income_tmp(int(T))
+    income = np.matlib.repmat(income_tmp, len(grid.dist), 1)
+
+    return income
+
+def ComputeIncomeNetOfCommuting(param, costTime, trans_monetaryCost, grid, poly, data, param_lambda, incomeCenters, year):
+
+    annualToHourly = 1 / (8*20*12)
+    costTime[np.isnan(costTime)] = 10 ** 2
+    monetaryCost = trans_monetaryCost[:, :, :, year] * annualToHourly #en coût par heure
+    monetaryCost[np.isnan(monetaryCost)] = 10**3 * annualToHourly
+    incomeCenters = incomeCenters * annualToHourly
+    xInterp = grid.horiz_coord
+    yInterp = grid.vert_coord
+    modalShares = np.zeros((len(incomeCenters), costTime.shape[1], 5, param["nb_of_income_classes"]))
+    ODflows = np.zeros((len(incomeCenters), costTime.shape[1], param["nb_of_income_classes"]))
+    incomeNetOfCommuting = np.zeros((param["nb_of_income_classes"], costTime.shape[1]))
+    averageIncome = np.zeros((param["nb_of_income_classes"], costTime.shape[1]))
+
+    for j in range(0, param["nb_of_income_classes"]):
+        
+        #Household size varies with transport costs
+        householdSize = param["household_size"][j]
+        whichCenters = incomeCenters[:,j] > -100000
+        incomeCentersGroup = incomeCenters[whichCenters, j]
+           
+        #Transport costs and employment allocation (cout par heure)
+        transportCostModes = householdSize * monetaryCost[whichCenters,:,:] + (costTime[whichCenters,:,:] * np.repeat(np.transpose(np.matlib.repmat(incomeCentersGroup, costTime.shape[1], 1))[:, :, np.newaxis], 5, axis=2))
+        
+        #Value max is to prevent the exp to diverge to infinity (in matlab: exp(800) = Inf)
+        valueMax = (np.min(param_lambda * transportCostModes, axis = 2) - 500)
+        
+        #Modal shares
+        modalShares[whichCenters,:,:,j] = np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2))  / np.repeat(np.nansum(np.exp(-param_lambda *transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2)), 2)[:, :, np.newaxis], 5, axis=2)
+        
+        #Transport costs
+        transportCost = - 1 /param_lambda * (np.log(np.nansum(np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2)), 2) - valueMax))
+        
+        #minIncome is also to prevent diverging exponentials
+        minIncome = np.nanmax(param_lambda  * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - 700
+        
+        #OD flows
+        #ODflows[whichCenters,:,j] = np.exp(param_lambda * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1)) - transportCost) - minIncome) / np.transpose(np.matlib.repmat(np.nansum(np.exp(param_lambda * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1)) - transportCost) - minIncome), 1), 24014, 1))
+        ODflows[whichCenters,:,j] = np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome) / np.nansum(np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome), 0)
+
+        #Income net of commuting (correct formula)
+        incomeNetOfCommuting[j,:] = 1 /param_lambda * (np.log(np.nansum(np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome), 0)) + minIncome)
+        
+        #Average income earned by a worker
+        averageIncome[j,:] = np.nansum(ODflows[whichCenters,:,j] * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))))
+
+
+    incomeNetOfCommuting = incomeNetOfCommuting / annualToHourly
+    averageIncome = averageIncome / annualToHourly
+    
+    return incomeNetOfCommuting, modalShares, ODflows, averageIncome
+
+
+def griddata_extra(a,b,c,x,y, extrapolate, coordinate_center):
+#Like a griddata but with extrapolation outside the area of data availability
+
+    test = ~np.isnan(c)
+    if sum(test) < 10:   
+        output = np.empty(len(x))
+        print('problematic employment: %g', coordinate_center[0], coordinate_center[1])
+    else:
+
+        #scatteredInterpolant does not extrapolate if 'none' is the second method parameter
+
+        if extrapolate == 1:
+
+            x_center = coordinate_center[0]
+            y_center = coordinate_center[1]
+
+            #Extrapolation by linear trend on angle slices
+            interpolated_values = griddata((a[test], b[test]), c[test], (x, y), method='linear')
+            extrapolated_values = np.empty(len(interpolated_values))
+            interv_angle = np.pi/10
+            angles = np.arange(interv_angle/2, (2*np.pi - interv_angle/2), interv_angle)
+            grid_angles = np.arctan2(y - y_center, x - x_center) + np.pi
+            grid_distance = np.sqrt((x - x_center) ** 2 + (y - y_center) ** 2)
+    
+            for theta in range(0, len(angles)):
+                which_angles = (grid_angles >= angles[theta] - interv_angle / 2) & (grid_angles <= angles[theta] + interv_angle / 2)
+                if sum(which_angles * ~np.isnan(interpolated_values)) != 0:
+                    coefficient = np.nanmean(interpolated_values[which_angles] / grid_distance[which_angles])
+                    max_value = np.max(interpolated_values[which_angles & ~np.isnan(interpolated_values)])
+                    which_max = np.argmax(interpolated_values[which_angles & ~np.isnan(interpolated_values)])
+                    max_distance = grid_distance[which_angles & ~np.isnan(interpolated_values)]
+                    max_distance = max_distance.iloc[which_max]
+                    extrapolated_values[which_angles] = max_value + coefficient * (grid_distance[which_angles] - max_distance)
+            output = interpolated_values
+            output[np.isnan(output)] = extrapolated_values[np.isnan(output)]
+    
+        else:
+  
+            output = griddata((a[test], b[test]), c[test], (x, y), method='linear')
+            
+            
+        return output
 
