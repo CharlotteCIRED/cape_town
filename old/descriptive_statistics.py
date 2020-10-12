@@ -277,7 +277,7 @@ def compute_damages(floods, path_data,
 
 
 ### Graph annualized damages
-damages =pd.DataFrame()
+damages = pd.DataFrame()
 damages["Structure"] = [13561467.56,	0,	227094.41,	128988.39]
 damages["Contents"] = [4205710.17,	271839.77,	657065.83,	325482.85]
 fig = plt.figure() # Create matplotlib figure

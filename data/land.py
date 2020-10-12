@@ -16,80 +16,71 @@ class Land:
         
         self
 
-    def import_land_use(self, grille, option, param, households_data, macro_data):
+    def import_land_use(self, grid, option, param, households_data, macro_data):
         
         area_pixel = (0.5 ** 2) * 1000000
 
-        #Land Cover Data from our estimation (see R code for details)
-        grid = pd.read_csv('./2. Data/Basile data/grid_NEDUM_Cape_Town_500.csv', sep = ';')
-        urban = np.transpose(grid.urban) / area_pixel
-        informal = np.transpose(grid.informal) / area_pixel
-        coeff_land_no_urban_edge = (np.transpose(grid.unconstrained_out) + np.transpose(grid.unconstrained_UE)) / area_pixel
-        coeff_land_urban_edge = np.transpose(grid.unconstrained_UE) / area_pixel
+        #0. Import Land Cover Data (see R code for details)
+        land_use_data_old = pd.read_csv('./2. Data/Basile data/grid_NEDUM_Cape_Town_500.csv', sep = ';')
+        informal_risks = pd.read_csv('./2. Data/Land occupation/informal_settlements_risk.csv', sep = ',')
         
-        #Number of RDP/BNG dwellings and area available for backyarding in each subplace
-        RDP_houses_estimates = households_data.GV_count_RDP
+        coeff_land_no_urban_edge = (np.transpose(land_use_data_old.unconstrained_out) + np.transpose(land_use_data_old.unconstrained_UE)) / area_pixel
+        coeff_land_urban_edge = np.transpose(land_use_data_old.unconstrained_UE) / area_pixel
+        informal = np.transpose(land_use_data_old.informal) / area_pixel
+        urban = np.transpose(land_use_data_old.urban) / area_pixel
+             
+        #1. Informal
+        
+        coeff_land_settlement = (informal_risks.area / area_pixel) * param["max_land_use_settlement"]
+        
+        #2. RDP and backyard
+        
+        RDP_houses_estimates = households_data.GV_count_RDP #actual nb of RDP houses
         area_RDP = households_data.GV_area_RDP * param["RDP_size"] / (param["backyard_size"] + param["RDP_size"]) / area_pixel
         area_backyard = households_data.GV_area_RDP * param["backyard_size"] / (param["backyard_size"] + param["RDP_size"]) / area_pixel
+        
         coeff_land_backyard = np.fmin(urban, area_backyard)
+        actual_backyards = (households_data.backyard_grid_2011 / np.nanmax(households_data.backyard_grid_2011)) * np.max(coeff_land_backyard)
+        coeff_land_backyard = np.fmax(coeff_land_backyard, actual_backyards)
         
-        numberPropertiesRDP2000 = households_data.GV_count_RDP * (1 - grille.dist / max(grille.dist[households_data.GV_count_RDP > 0]))
+        numberPropertiesRDP2000 = households_data.GV_count_RDP * (1 - grid.dist / max(grid.dist[households_data.GV_count_RDP > 0]))
+        method = 'linear'        
+        construction_rdp = pd.read_csv('./2. Data/Basile data/grid_new_RDP_projects.csv')            
+        yearBeginRDP = 2015
+        yearRDP = np.arange(yearBeginRDP, 2040) - param["baseline_year"]
+        numberRDP = macro_data.rdp(yearRDP)           
+        yearShortTerm = np.argmin(np.abs(sum(construction_rdp.total_yield_DU_ST) - (numberRDP - numberRDP[0])))
+        yearLongTerm = np.argmin(np.abs(sum(construction_rdp.total_yield_DU_LT + construction_rdp.total_yield_DU_ST) - (numberRDP - numberRDP[0])))
+        areaRDPShortTerm = np.minimum(construction_rdp.area_ST, (param["backyard_size"] + param["RDP_size"]) * construction_rdp.total_yield_DU_ST)
+        areaRDPLongTerm = np.minimum(np.minimum(construction_rdp.area_ST + construction_rdp.area_LT, (param["backyard_size"] + param["RDP_size"]) * (construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT)), area_pixel)
+
+        areaBackyardShortTerm = area_backyard + np.maximum(areaRDPShortTerm - construction_rdp.total_yield_DU_ST * param["RDP_size"], 0) / area_pixel
+        areaRDPShortTerm = area_RDP + np.minimum(construction_rdp.total_yield_DU_ST * param["RDP_size"], construction_rdp.area_ST) / area_pixel
+        areaBackyardShortTerm = np.minimum(areaBackyardShortTerm, param["max_land_use"] - areaRDPShortTerm)
+        areaBackyardLongTerm = area_backyard + np.maximum(areaRDPLongTerm - (construction_rdp.total_yield_DU_LT + construction_rdp.total_yield_DU_ST) * param["RDP_size"], 0) / area_pixel
+        areaRDPLongTerm = area_RDP + np.minimum((construction_rdp.total_yield_DU_LT + construction_rdp.total_yield_DU_ST) * param["RDP_size"], areaRDPLongTerm) / area_pixel
+        areaBackyardLongTerm = np.minimum(areaBackyardLongTerm, param["max_land_use"] - areaRDPLongTerm)
+
+        year_data_informal = [2000 - param["baseline_year"], yearBeginRDP - param["baseline_year"], yearShortTerm, yearLongTerm]
+        spline_land_backyard = interp1d(year_data_informal,  np.transpose([np.fmax(area_backyard, actual_backyards), np.fmax(area_backyard, actual_backyards), np.fmax(areaBackyardShortTerm, actual_backyards), np.fmax(areaBackyardLongTerm, actual_backyards)]), method)
         
-        method = 'linear'
-        
-        if option["future_construction_RDP"] == 1: 
-            #if backyarding is possible in future RDP/BNG settlements
+        spline_land_RDP = interp1d(year_data_informal,  np.transpose([area_RDP, area_RDP, areaRDPShortTerm, areaRDPLongTerm]), method)
+        spline_estimate_RDP = interp1d(year_data_informal, np.transpose([numberPropertiesRDP2000, RDP_houses_estimates, RDP_houses_estimates + construction_rdp.total_yield_DU_ST, RDP_houses_estimates + construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT]), method)
 
-            construction_rdp = pd.read_csv('./2. Data/Basile data/grid_new_RDP_projects.csv')
-            
-            yearBeginRDP = 2015
-            yearRDP = np.arange(yearBeginRDP, 2040) - param["baseline_year"]
-            numberRDP = macro_data.rdp(yearRDP)
-            
-            yearShortTerm = np.argmin(np.abs(sum(construction_rdp.total_yield_DU_ST) - (numberRDP - numberRDP[0])))
-            yearLongTerm = np.argmin(np.abs(sum(construction_rdp.total_yield_DU_LT + construction_rdp.total_yield_DU_ST) - (numberRDP - numberRDP[0])))
 
-            areaRDPShortTerm = np.minimum(construction_rdp.area_ST, (param["backyard_size"] + param["RDP_size"]) * construction_rdp.total_yield_DU_ST)
-            areaRDPLongTerm = np.minimum(np.minimum(construction_rdp.area_ST + construction_rdp.area_LT, (param["backyard_size"] + param["RDP_size"]) * (construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT)), area_pixel)
-
-            #Share of pixel for RDP houses and backyards in ST and LT
-            areaBackyardShortTerm = area_backyard + np.maximum(areaRDPShortTerm - construction_rdp.total_yield_DU_ST * param["RDP_size"], 0) / area_pixel
-            areaRDPShortTerm = area_RDP + np.minimum(construction_rdp.total_yield_DU_ST * param["RDP_size"], construction_rdp.area_ST) / area_pixel
-            areaBackyardShortTerm = np.minimum(areaBackyardShortTerm, param["max_land_use"] - areaRDPShortTerm)
-            areaBackyardLongTerm = area_backyard + np.maximum(areaRDPLongTerm - (construction_rdp.total_yield_DU_LT + construction_rdp.total_yield_DU_ST) * param["RDP_size"], 0) / area_pixel
-            areaRDPLongTerm = area_RDP + np.minimum((construction_rdp.total_yield_DU_LT + construction_rdp.total_yield_DU_ST) * param["RDP_size"], areaRDPLongTerm) / area_pixel
-            areaBackyardLongTerm = np.minimum(areaBackyardLongTerm, param["max_land_use"] - areaRDPLongTerm)
-
-            #area_backyard_2025 = np.fmin(param["backyard_size"] / (param["backyard_size"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST) * param["backyard_size"] / area_pixel)
-            #area_RDP_2025 = np.fmin(param["RDP_size"] / (param["backyard_size"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST) * param["RDP_size"] / area_pixel)
-            #area_backyard_2040 = np.fmin(param["future_backyard_size"] / (param["future_backyard_size"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT) * param["future_backyard_size"] / area_pixel)
-            #area_RDP_2040 = np.fmin(param["RDP_size"] / (param["future_backyard_size"] + param["RDP_size"]), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT) * param["RDP_size"] / area_pixel)
-           
-            #year_data_informal = np.transpose([1990, 2015, 2025, 2040]) - param["baseline_year"]         
-            #spline_land_backyard = interp1d(year_data_informal, np.transpose([area_backyard, area_backyard, area_backyard_2025, area_backyard_2040]), method)
-            #spline_land_RDP = interp1d(year_data_informal, np.transpose([area_RDP, area_RDP, area_RDP_2025, area_RDP_2040]), method)
-            #spline_estimate_RDP = interp1d(year_data_informal, np.transpose([RDP_houses_estimates, RDP_houses_estimates, RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST), RDP_houses_estimates + np.transpose(construction_rdp.total_yield_DU_ST) + np.transpose(construction_rdp.total_yield_DU_LT)]), method)
-
-            year_data_informal = [2000 - param["baseline_year"], yearBeginRDP - param["baseline_year"], yearShortTerm, yearLongTerm]
-    
-            spline_land_backyard = interp1d(year_data_informal,  np.transpose([area_backyard, area_backyard, areaBackyardShortTerm, areaBackyardLongTerm]), method)
-            spline_land_RDP = interp1d(year_data_informal,  np.transpose([area_RDP, area_RDP, areaRDPShortTerm, areaRDPLongTerm]), method)
-            spline_estimate_RDP = interp1d(year_data_informal, np.transpose([numberPropertiesRDP2000, RDP_houses_estimates, RDP_houses_estimates + construction_rdp.total_yield_DU_ST, RDP_houses_estimates + construction_rdp.total_yield_DU_ST + construction_rdp.total_yield_DU_LT]), method)
-
-                                                        
-        elif option["future_construction_RDP"] == 0:
-            #Scenario with no future construction of RDP
-
-            year_data_informal = np.transpose([1990, 2040]) - param["baseline_year"]
-            spline_land_backyard = interp1d(x = year_data_informal, y = np.transpose([area_backyard, area_backyard]), kind = method)
-            spline_land_RDP = interp1d(year_data_informal,  np.transpose([area_RDP, area_RDP]), kind = method)
-            spline_estimate_RDP = interp1d(year_data_informal, np.transpose([RDP_houses_estimates, RDP_houses_estimates]), kind = method)
-
-        
-        coeff_land_private_urban_edge = (coeff_land_urban_edge - informal - np.fmin(area_RDP + area_backyard, urban)) * param["max_land_use"]
-        coeff_land_private_no_urban_edge = (coeff_land_no_urban_edge - informal - np.fmin(area_RDP + area_backyard, urban)) * param["max_land_use"]
+        #3. Formal
+       
+        coeff_land_private_urban_edge = (coeff_land_urban_edge - informal - area_RDP - area_backyard) * param["max_land_use"]
+        coeff_land_private_no_urban_edge = (coeff_land_no_urban_edge - informal - area_RDP - area_backyard) * param["max_land_use"]
         coeff_land_private_urban_edge[coeff_land_private_urban_edge < 0] = 0
         coeff_land_private_no_urban_edge[coeff_land_private_no_urban_edge < 0] = 0
+        
+        if option["urban_edge"] == 0:
+            coeff_land_private = coeff_land_private_urban_edge
+        else:
+            coeff_land_private = coeff_land_private_no_urban_edge
+                       
+        #4. Constraints
         
         if option["urban_edge"] == 0:
             year_constraints = np.array([1990, param["yearUrbanEdge"] - 1, param["yearUrbanEdge"], 2040]) - param["baseline_year"]
@@ -98,28 +89,15 @@ class Land:
             year_constraints = np.array([1990, 2040]) - param["baseline_year"]
             spline_land_constraints = interp1d(year_constraints, np.transpose(np.array([coeff_land_urban_edge, coeff_land_urban_edge])))
 
-        if option["urban_edge"] == 0:
-            coeff_land_private = coeff_land_private_urban_edge
-        else:
-            coeff_land_private = coeff_land_private_no_urban_edge
-
-
         #Coeff_land for each housing type
         coeff_land_backyard = coeff_land_backyard * param["max_land_use_backyard"]
         coeff_land_backyard[coeff_land_backyard < 0] = 0
-        coeff_land_settlement = informal * param["max_land_use_settlement"]
         coeff_land_RDP = np.ones(len(coeff_land_private))
         
         #Building limit
-        centerRegulation = (grille.dist <= param["historicRadius"])
-        outsideRegulation = (grille.dist > param["historicRadius"])
+        centerRegulation = (grid.dist <= param["historicRadius"])
+        outsideRegulation = (grid.dist > param["historicRadius"])
         housingLimit = param["limitHeightCenter"] * 1000000 * centerRegulation + param["limitHeightOut"] * 1000000 * outsideRegulation 
-
-
-
-
-
-
 
 
 

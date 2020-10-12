@@ -14,7 +14,7 @@ import math
 import copy
 import scipy.io
 
-def ComputeNEDUMOutput_LOGIT(Uo, param, option, transTemp_incomeNetOfCommuting, grid, agriculturalRent, housingLimit, referenceRent, constructionParam, interestRate, income, multiProbaGroup, transportCost, transportCostRDP, coeffLand, job, amenities, solus_R, solus_Q, typeHousing, param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat):
+def ComputeNEDUMOutput_LOGIT(Uo, param, option, transTemp_incomeNetOfCommuting, grid, agriculturalRent, housingLimit, referenceRent, constructionParam, interestRate, income, multiProbaGroup, transportCost, transportCostRDP, coeffLand, job, amenities, solus_Q, typeHousing, param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat, flood):
     
     basic_q_formal = param["q0"]
 
@@ -38,12 +38,18 @@ def ComputeNEDUMOutput_LOGIT(Uo, param, option, transTemp_incomeNetOfCommuting, 
     
     #Bid rents    
     if typeHousing == 'formal':
-        R_mat = param["beta"] * (transTemp_incomeNetOfCommuting) / (dwellingSize - param["alpha"] *param["q0"])
+        if option["floods"] == 0:
+            R_mat = param["beta"] * (transTemp_incomeNetOfCommuting) / (dwellingSize - param["alpha"] *param["q0"])
+        elif option["floods"] == 1:
+            R_mat = param["beta"] * (transTemp_incomeNetOfCommuting - (flood.d_contents * flood.content_cost)) / (dwellingSize - param["alpha"] *param["q0"])
         R_mat[transTemp_incomeNetOfCommuting < 0] = 0
         R_mat[job.formal == 0, :] = np.nan
     elif typeHousing == 'backyard':
         amenities = copy.deepcopy(amenities) * param["amenity_backyard"]
-        R_mat = 1 / param["shack_size"] * (transTemp_incomeNetOfCommuting - (np.transpose(np.matlib.repmat(Uo, income.shape[0], 1)) / ((np.matlib.repmat(amenities, income.shape[1], 1)) * (param["shack_size"] - param["q0"]) ** param["beta"])) ** (1 / param["alpha"]))
+        if option["floods"] == 0:
+            R_mat = (1 / param["shack_size"]) * (transTemp_incomeNetOfCommuting - (np.transpose(np.matlib.repmat(Uo, income.shape[0], 1)) / ((np.matlib.repmat(amenities, income.shape[1], 1)) * ((param["shack_size"] - param["q0"]) ** param["beta"]))) ** (1 / param["alpha"]))
+        elif option["floods"] == 1:
+            R_mat = (1 / param["shack_size"]) * (transTemp_incomeNetOfCommuting - ((np.transpose(np.matlib.repmat(Uo, income.shape[0], 1)) / ((np.matlib.repmat(amenities, income.shape[1], 1)) * ((param["shack_size"] - param["q0"]) ** param["beta"]))) ** (1 / param["alpha"])) - (flood.d_contents * flood.content_cost) - (flood.d_structure * flood.informal_structure_value) - (interestRate * flood.informal_structure_value))
         R_mat[job.backyard == 0, :] = np.nan
     elif typeHousing == 'informal':
         amenities = copy.deepcopy(amenities) * param["amenity_settlement"]
@@ -79,7 +85,10 @@ def ComputeNEDUMOutput_LOGIT(Uo, param, option, transTemp_incomeNetOfCommuting, 
 
     if typeHousing == 'formal':
         if option["adjustHousingSupply"] == 1:
-            housingSupply = 1000000 * constructionParam ** (1 / param["coeff_a"]) *(param["coeff_b"] / interestRate) ** (param["coeff_b"] /param["coeff_a"]) * R ** (param["coeff_b"] / param["coeff_a"])
+            if option["floods"] == 0:
+                housingSupply = 1000000 * constructionParam ** (1 / param["coeff_a"]) *(param["coeff_b"] / (interestRate)) ** (param["coeff_b"] /param["coeff_a"]) * R ** (param["coeff_b"] / param["coeff_a"])
+            elif option["floods"] == 1:
+                housingSupply = 1000000 * constructionParam ** (1 / param["coeff_a"]) *(param["coeff_b"] / (interestRate + flood.d_structure)) ** (param["coeff_b"] /param["coeff_a"]) * R ** (param["coeff_b"] / param["coeff_a"])
             
             #Outside the agricultural rent, no housing (accounting for a tax)
             housingSupply[R < agriculturalRent + param_taxUrbanEdgeMat] = 0
@@ -95,8 +104,13 @@ def ComputeNEDUMOutput_LOGIT(Uo, param, option, transTemp_incomeNetOfCommuting, 
         else:   
             housingSupply = param_housing_in
     elif typeHousing == 'backyard':
-        housingSupply = param["alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["beta"] *(income[:, 0] - transportCostRDP) /((param["backyard_size"]) * R)
-        housingSupply[income[:, 0] < transportCostRDP] = param["alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["beta"] * (income[income[:, 0] < transportCostRDP, 0]) / ((param["backyard_size"]) * R[income[:, 0] < transportCostRDP])
+        if option["floods"] == 0:
+            housingSupply = param["alpha"] * (((param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]))) - (param["beta"] * ((income[:, 0] - transportCostRDP) /((param["backyard_size"]) * R)))
+            housingSupply[income[:, 0] < transportCostRDP] = param["alpha"] * (param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]) - param["beta"] * (income[income[:, 0] < transportCostRDP, 0]) / ((param["backyard_size"]) * R[income[:, 0] < transportCostRDP])
+        elif option["floods"] == 1:
+            housingSupply = param["alpha"] * (((param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]))) - (param["beta"] * ((income[:, 0] - transportCostRDP - (flood.d_contents * flood.content_cost)) /((param["backyard_size"]) * R)))
+            housingSupply[income[:, 0] < transportCostRDP] = (param["alpha"] * ((param["RDP_size"] + param["backyard_size"] - basic_q_formal) / (param["backyard_size"]))) - (param["beta"] * (income[income[:, 0] < transportCostRDP, 0] - (flood.d_contents * flood.content_cost)) / ((param["backyard_size"]) * R[income[:, 0] < transportCostRDP]))
+        
         housingSupply[R == 0] = 0
         housingSupply = np.fmin(housingSupply, 1)
         housingSupply = np.fmax(housingSupply, 0)

@@ -21,15 +21,17 @@ from solver.compute_outputs_solver import *
 
 #def RunEquilibriumSolverNEDUM_LOGIT(yearEquilibrium, trans, option, land, grid, macro_data, param, job, Uo_init, param["housing_in"]):
     
-def RunEquilibriumSolverNEDUM_LOGIT(yearEquilibrium, trans, option, land, grid, macro_data, param, job, Uo_init):
+def RunEquilibriumSolverNEDUM_LOGIT(yearEquilibrium, option, land, grid, macro_data, param, job, Uo_init, flood):
+    
     #Income for the year (varies in time)
     incomeMatrix = InterpolateIncomeEvolution(macro_data, param, option, grid, job, yearEquilibrium)
     #Average income for the year of the simulation
     incomeAverage = macro_data.income(yearEquilibrium)
 
     #Interpolate income net of commuting costs
-    incomeNetOfCommuting = InterpolateIncomeNetOfCommutingCostsEvolution(trans, param, yearEquilibrium)
-
+    incomeNetOfCommuting = np.load("C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/precalculated_transport/year_" + str(yearEquilibrium) + ".npy")
+    #incomeNetOfCommuting = InterpolateIncomeNetOfCommutingCostsEvolution(trans, param, yearEquilibrium)
+    
     #Interpolate interest rates
     interestRate = InterpolateInterestRateEvolution(macro_data, yearEquilibrium)
 
@@ -63,13 +65,13 @@ def RunEquilibriumSolverNEDUM_LOGIT(yearEquilibrium, trans, option, land, grid, 
 
     #Computation of the initial state
     if option["ownInitializationSolver"] == 1:
-        initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation = ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, rentReference, housingLimit, incomeMatrix, incomeAverage, incomeNetOfCommuting, interestRate, population, agriculturalRent, constructionParam, job, Uo_init, totalRDP);
+        initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation = ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, rentReference, housingLimit, incomeMatrix, incomeAverage, incomeNetOfCommuting, interestRate, population, agriculturalRent, constructionParam, job, Uo_init, totalRDP, flood);
     else:
-        initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation = ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, rentReference, housingLimit,incomeMatrix, incomeAverage, incomeNetOfCommuting, interestRate, population, agriculturalRent ,constructionParam, job, 1, totalRDP);
+        initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation = ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, rentReference, housingLimit,incomeMatrix, incomeAverage, incomeNetOfCommuting, interestRate, population, agriculturalRent ,constructionParam, job, 1, totalRDP, flood);
 
     return initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation
 
-def ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, rentReference, housingLimit, incomeMatrix, incomeAverage, incomeNetOfCommuting, interestRate, population, agriculturalRent, constructionParam, job, Uo_init, totalRDP):
+def ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, rentReference, housingLimit, incomeMatrix, incomeAverage, incomeNetOfCommuting, interestRate, population, agriculturalRent, constructionParam, job, Uo_init, totalRDP, flood):
 
     maxIteration = param["max_iter"]
     precision = param["precision"]
@@ -108,24 +110,24 @@ def ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, r
     # %% Pre-calculation of the utility / rent relationship
 
     #Precalculations for rents
-    uti = lambda Ro, revenu : ComputeUtilityFromRent(Ro, revenu, param["q0"], param) #EQUATION C.2
+    #uti = lambda Ro, revenu : ComputeUtilityFromRent(Ro, revenu, param["q0"], param) #EQUATION C.2
 
-    decompositionRent = np.concatenate(([10 ** (-9), 10 ** (-4), 10 ** (-3), 10 ** (-2)], np.arange(0.02, 0.081, 0.015), np.arange(0.1, 1.01, 0.02)))
-    decompositionIncome = np.concatenate(([10 ** (-9), 10 ** (-4), 10 ** (-3.5), 10 ** (-3), 10 ** (-2.5), 10 ** (-2), 0.03], np.arange(0.06, 1.01, 0.02)))
+    #decompositionRent = np.concatenate(([10 ** (-9), 10 ** (-4), 10 ** (-3), 10 ** (-2)], np.arange(0.02, 0.081, 0.015), np.arange(0.1, 1.01, 0.02)))
+    #decompositionIncome = np.concatenate(([10 ** (-9), 10 ** (-4), 10 ** (-3.5), 10 ** (-3), 10 ** (-2.5), 10 ** (-2), 0.03], np.arange(0.06, 1.01, 0.02)))
 
-    incomeVector = np.nanmax(incomeNetOfCommuting) * decompositionIncome
-    incomeMat = np.matlib.repmat(incomeVector, len(incomeVector), 1)
+    #incomeVector = np.nanmax(incomeNetOfCommuting) * decompositionIncome
+    #incomeMat = np.matlib.repmat(incomeVector, len(incomeVector), 1)
     
-    rentVector = incomeVector / param["q0"] #the maximum rent is the rent for which u = 0
-    rentMatrix = np.transpose(rentVector) * decompositionRent
+    #rentVector = incomeVector / param["q0"] #the maximum rent is the rent for which u = 0
+    #rentMatrix = np.transpose(rentVector) * decompositionRent
 
-    XX = incomeMat
-    YY_R = uti(rentMatrix, incomeMat)
-    ZZ_R = rentMatrix
-    solus_R = lambda x, y : griddata((XX, YY), ZZ_R ** param["beta"], (x, y)) ** (1 / param["beta"])
+    #XX = copy.deepcopy(incomeMat)
+    #YY_R = uti(rentMatrix, incomeMat)
+    #ZZ_R = copy.deepcopy(rentMatrix)
+    #solus_R = lambda x, y : griddata((XX, YY), ZZ_R ** param["beta"], (x, y)) ** (1 / param["beta"])
 
     #Precalculations for dwelling sizes    
-    utilitySize = lambda q, income : ComputeUtilityFromDwellingSize(q, income, param["q0"], param) #EQUATION C.2
+    utilitySize = lambda q, income : ComputeUtilityFromDwellingSize(q, income, param["q0"], param, flood, option) #EQUATION C.2
 
     decompositionQ = np.concatenate(([10 ** (-8), 10 ** (-7), 10 ** (-6), 10 ** (-5), 10 ** (-4), 10 ** (-3), 10 ** (-2), 10 ** (-1)], np.arange(0.11, 0.15, 0.01), np.arange(0.15, 1.15, 0.05), np.arange(1.2, 3.1, 0.1), np.arange(3.5, 13.1, 0.25), np.arange(15, 60, 0.5), np.arange(60, 100, 2.5), np.arange(110, 210, 10), [250, 300, 500, 1000, 2000, 200000, 1000000, 10 ** 12]))
     decompositionIncome = np.concatenate(([10 ** (-9), 10 ** (-4), 10 ** (-3.5), 10 ** (-3), 10 ** (-2.5), 10 ** (-2), 0.03], np.arange(0.06, 2.01, 0.01), np.arange(2.2, 2.7, 0.2), np.arange(3, 10, 1), [100, 10 ** 4]))
@@ -140,9 +142,9 @@ def ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, r
     print(sum(np.isnan(incomeMat)))
     print(dwellingSizeMatrix.shape)
     print(sum(np.isnan(dwellingSizeMatrix)))
-    XX = incomeMat
+    XX = copy.deepcopy(incomeMat)
     YY_Q = utilitySize(dwellingSizeMatrix, incomeMat)
-    ZZ_Q = dwellingSizeMatrix
+    ZZ_Q = copy.deepcopy(dwellingSizeMatrix)
     param["max_U"] = np.nanmax(np.nanmax(YY_Q))
     param["max_q"] = np.max(dwellingSizeVector)
     solus_Q_temp = lambda x, y : griddata(points = (np.concatenate(XX), np.concatenate(YY_Q)), values = np.concatenate(ZZ_Q), xi = (x, np.fmin(y, param["max_U"])))
@@ -204,18 +206,18 @@ def ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, r
     Uo[0,:] = Uo_init
 
     indexIteration = 0
-    convergenceFactorInitial = 0.0045 * (np.nanmean(averageIncome) / macro_data.income_year_reference) ** 0.4 #0.007;
+    convergenceFactorInitial = 0.045 * (np.nanmean(averageIncome) / macro_data.income_year_reference) ** 0.4 #0.007;
 
     param["convergenceFactor"] = convergenceFactorInitial
 
     #Formal housing
-    simulatedJobs[indexIteration,0,:],rentMatrix[indexIteration,0,:],simulatedPeopleHousingTypes[indexIteration,0,:],simulatedPeople[0,:,:],housingSupply[0,:],dwellingSize[0,:], R_mat[0,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration,:],param,option,transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit,rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[0,:], job, amenities, solus_R, solus_Q, 'formal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat)
+    simulatedJobs[indexIteration,0,:],rentMatrix[indexIteration,0,:],simulatedPeopleHousingTypes[indexIteration,0,:],simulatedPeople[0,:,:],housingSupply[0,:],dwellingSize[0,:], R_mat[0,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration,:],param,option,transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit,rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[0,:], job, amenities, solus_Q, 'formal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat, flood)
 
     #Backyard housing
-    simulatedJobs[indexIteration,1,:],rentMatrix[indexIteration,1,:],simulatedPeopleHousingTypes[indexIteration,1,:],simulatedPeople[1,:,:],housingSupply[1,:],dwellingSize[1,:], R_mat[1,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration,:],param,option,transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit,rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[1,:], job, amenities, solus_R, solus_Q, 'backyard', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat)
+    simulatedJobs[indexIteration,1,:],rentMatrix[indexIteration,1,:],simulatedPeopleHousingTypes[indexIteration,1,:],simulatedPeople[1,:,:],housingSupply[1,:],dwellingSize[1,:], R_mat[1,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration,:],param,option,transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit,rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[1,:], job, amenities, solus_Q, 'backyard', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat, flood)
 
     #Informal settlements
-    simulatedJobs[indexIteration,2,:],rentMatrix[indexIteration,2,:],simulatedPeopleHousingTypes[indexIteration,2,:],simulatedPeople[2,:,:],housingSupply[2,:],dwellingSize[2,:], R_mat[2,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration,:],param,option,transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit,rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[2,:], job, amenities, solus_R, solus_Q, 'informal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat)
+    simulatedJobs[indexIteration,2,:],rentMatrix[indexIteration,2,:],simulatedPeopleHousingTypes[indexIteration,2,:],simulatedPeople[2,:,:],housingSupply[2,:],dwellingSize[2,:], R_mat[2,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration,:],param,option,transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit,rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[2,:], job, amenities, solus_Q, 'informal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat, flood)
 
     #Total simulated population
     totalSimulatedJobs[indexIteration,:] = np.sum(simulatedJobs[indexIteration,:,:], 0)
@@ -258,13 +260,13 @@ def ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, r
         
     
         #Formal housing
-        simulatedJobs[indexIteration, 0, :], rentMatrix[indexIteration, 0, :], simulatedPeopleHousingTypes[indexIteration, 0, :], simulatedPeople[0, :, :], housingSupply[0,:], dwellingSize[0, :], R_mat[0, :, :] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration, :], param, option, transTemp_incomeNetOfCommuting,grid,agriculturalRent, housingLimit, rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[0,:], job, amenities, solus_R, solus_Q, 'formal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat)
+        simulatedJobs[indexIteration, 0, :], rentMatrix[indexIteration, 0, :], simulatedPeopleHousingTypes[indexIteration, 0, :], simulatedPeople[0, :, :], housingSupply[0,:], dwellingSize[0, :], R_mat[0, :, :] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration, :], param, option, transTemp_incomeNetOfCommuting,grid,agriculturalRent, housingLimit, rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup, 0, 0, land.coeffLand[0,:], job, amenities, solus_Q, 'formal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat, flood)
 
         #Backyard housing
-        simulatedJobs[indexIteration, 1, :], rentMatrix[indexIteration, 1, :], simulatedPeopleHousingTypes[indexIteration, 1, :], simulatedPeople[1, :, :], housingSupply[1, :], dwellingSize[1, :], R_mat[1,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration, :], param, option, transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit, rentReference,constructionParam,interestRate,incomeMatrix, multiProbaGroup, 0, 0, land.coeffLand[1, :], job, amenities, solus_R, solus_Q, 'backyard', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat)
+        simulatedJobs[indexIteration, 1, :], rentMatrix[indexIteration, 1, :], simulatedPeopleHousingTypes[indexIteration, 1, :], simulatedPeople[1, :, :], housingSupply[1, :], dwellingSize[1, :], R_mat[1,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration, :], param, option, transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit, rentReference,constructionParam,interestRate,incomeMatrix, multiProbaGroup, 0, 0, land.coeffLand[1, :], job, amenities, solus_Q, 'backyard', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat, flood)
             
         #Informal settlements
-        simulatedJobs[indexIteration, 2, :], rentMatrix[indexIteration, 2, :], simulatedPeopleHousingTypes[indexIteration, 2, :], simulatedPeople[2, :, :], housingSupply[2, :], dwellingSize[2, :], R_mat[2,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration, :], param, option, transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit, rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup,0,0, land.coeffLand[2, :], job, amenities, solus_R, solus_Q, 'informal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat)
+        simulatedJobs[indexIteration, 2, :], rentMatrix[indexIteration, 2, :], simulatedPeopleHousingTypes[indexIteration, 2, :], simulatedPeople[2, :, :], housingSupply[2, :], dwellingSize[2, :], R_mat[2,:,:] = ComputeNEDUMOutput_LOGIT(Uo[indexIteration, :], param, option, transTemp_incomeNetOfCommuting,grid,agriculturalRent,housingLimit, rentReference,constructionParam,interestRate,incomeMatrix,multiProbaGroup,0,0, land.coeffLand[2, :], job, amenities, solus_Q, 'informal', param_minimumHousingSupply, param_housing_in, param_taxUrbanEdgeMat, flood)
 
         #total simulated population
         totalSimulatedJobs[indexIteration,:] = np.sum(simulatedJobs[indexIteration, :, :], 0)
@@ -363,27 +365,26 @@ def ComputeEquilibrium(option, land, grid, macro_data, param, yearEquilibrium, r
     return initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation
 
 
-def ComputeUtilityFromRent(Ro, income, basic_q, param):
-    if (basic_q != 0):
-        utility = param["alpha"] ** param["alpha"] * param["beta"] ** param["beta"] * np.sign(income - basic_q *Ro) * np.abs(income - basic_q * Ro) / (Ro ** param["beta"])
-        utility[(income - basic_q * Ro) < 0] = 0
-    else:
-        utility = param["alpha"] ** param["alpha"] * param["beta"] ** param["beta"] * income / (Ro ** param["beta"])
+#def ComputeUtilityFromRent(Ro, income, basic_q, param):
+    #if (basic_q != 0):
+     #   utility = param["alpha"] ** param["alpha"] * param["beta"] ** param["beta"] * np.sign(income - basic_q *Ro) * np.abs(income - basic_q * Ro) / (Ro ** param["beta"])
+     #   utility[(income - basic_q * Ro) < 0] = 0
+    #else:
+    #    utility = param["alpha"] ** param["alpha"] * param["beta"] ** param["beta"] * income / (Ro ** param["beta"])
     
-    utility[income==0] = 0
-    return utility
+    #utility[income==0] = 0
+    #return utility
 
-
-
-def ComputeUtilityFromDwellingSize(q, income, basic_q, param):
-    if (basic_q != 0):
+def ComputeUtilityFromDwellingSize(q, income, basic_q, param, flood, option):
+    #if (basic_q != 0):
+    if option["floods"] == 0:
         utility = (param["alpha"] * income) ** param["alpha"] * (q - basic_q) / (q - param["alpha"] * basic_q) ** param["alpha"]
-        utility[q < basic_q] = 0
-    else:
-        utility = (param["alpha"] * income) ** param["alpha"] * q ** param["beta"]
+    elif option["floods"] == 1:
+        utility = (param["alpha"] * (income - (flood.d_contents * flood.content_cost))) ** param["alpha"] * (q - basic_q) / (q - param["alpha"] * basic_q) ** param["alpha"]
+    utility[q < basic_q] = 0
+    #else:
+        #utility = (param["alpha"] * income) ** param["alpha"] * q ** param["beta"]
         
     utility[income==0] = 0
     return utility
-
-
 

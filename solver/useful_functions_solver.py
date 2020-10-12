@@ -99,7 +99,7 @@ def utilite_amenite(Z,hous, param, amenite, revenu,Ro):
 def InterpolateIncomeNetOfCommutingCostsEvolution(trans,param,t):
     #computes transport generalized cost for a given year, by interpolation, using variable trans as input
     
-    index1, index2, ponder1, ponder2 = CreatePonderation(t + param["baseline_year"], trans.yearTransport)
+    index1, index2, ponder1, ponder2 = CreatePonderation(t + param["baseline_year"], np.array([0, t]))
     return ponder1 * trans.incomeNetOfCommuting[:,:,index1] + ponder2 * trans.incomeNetOfCommuting[:,:,index2]
 
 def CreatePonderation(value, vector):

@@ -12,9 +12,11 @@ def grid_map(x, grid):
                       grid.vert_coord, 
                       s=None,
                       c=x,
-                      cmap = 'Reds',
+                      #cmap = 'Reds',
                       marker='.')
-    #plt.colorbar(map)
+    plt.colorbar(map)
+    #plt.clim(-100, 100)
+    plt.axis('off')
     plt.show()
 
 def sp_map(x, data_courbe_SP_X, data_courbe_SP_Y):

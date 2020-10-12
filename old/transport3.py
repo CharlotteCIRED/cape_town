@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct  9 17:59:04 2020
+Created on Wed Sep 16 14:53:22 2020
 
 @author: Charlotte Liotta
 """
@@ -8,26 +8,25 @@ Created on Fri Oct  9 17:59:04 2020
 import numpy as np
 import pandas as pd
 from data.functions_to_import_data import *
-from data.transport import *
 import numpy.matlib
 from scipy.interpolate import griddata
 import scipy.io
 import copy
 
-
-#for t_temp in np.arange(3, 30):
-#    yearTraffic = np.array([0, t_temp])
-#    income_temp = import_transport_data(option, grid, macro_data, param, job, households_data, yearTraffic, 1)
-#    np.save("C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/precalculated_transport/year_" + str(t_temp), income_temp)
-
-def import_transport_data(option, grid, macro_data, param, job, households_data, yearTraffic, extrapolate):
+class TransportData:
+        
+    def __init__(self):
+        
+        self
+        
+    def import_transport_data(self, option, grid, macro_data, param, job, households_data, yearTraffic, extrapolate):
         """ Compute travel times and costs """
 
         #### STEP 1: IMPORT TRAVEL TIMES AND COSTS
 
         # Import travel times and distances
         transport_times = scipy.io.loadmat('./2. Data/Basile data/Transport_times_GRID.mat')
-
+        
         #Price per km
         priceTrainPerKMMonth = 0.164 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
         priceTrainFixedMonth = 4.48 * 40 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
@@ -148,11 +147,11 @@ def import_transport_data(option, grid, macro_data, param, job, households_data,
                 transportCostModes = householdSize * (monetaryCost[whichCenters,:,:] + (costTime[whichCenters,:,:] * incomeCentersGroup[:, None, None]))
                 
                 #Value max is to prevent the exp to diverge to infinity (in matlab: exp(800) = Inf)
-                #valueMax = (np.min(param_lambda * transportCostModes, axis = 2) - 500) #-500
+                valueMax = (np.min(param_lambda * transportCostModes, axis = 2) - 500) #-500
         
                 #Modal shares
                 #modalShares[whichCenters,:,:,j,index] = np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2))  / np.repeat(np.nansum(np.exp(-param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2)), 2)[:, :, np.newaxis], 5, axis=2)
-                #modalShares[whichCenters,:,:,j,index] = np.exp(- param_lambda * transportCostModes + valueMax[:, :, None])  / np.nansum(np.exp(-param_lambda * transportCostModes + valueMax[:, :, None]), 2)[:, :, None]
+                modalShares[whichCenters,:,:,j,index] = np.exp(- param_lambda * transportCostModes + valueMax[:, :, None])  / np.nansum(np.exp(-param_lambda * transportCostModes + valueMax[:, :, None]), 2)[:, :, None]
         
                 #Transport costs
                 #transportCost = - 1 /param_lambda * (np.log(np.nansum(np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2)), 2) - valueMax))
@@ -165,16 +164,70 @@ def import_transport_data(option, grid, macro_data, param, job, households_data,
                 #OD flows
                 #ODflows[whichCenters,:,j] = np.exp(param_lambda * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1)) - transportCost) - minIncome) / np.transpose(np.matlib.repmat(np.nansum(np.exp(param_lambda * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1)) - transportCost) - minIncome), 1), 24014, 1))
                 #ODflows[whichCenters,:,j, index] = np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome) / np.nansum(np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome), 0)
-                #ODflows[whichCenters,:,j,index] = np.exp(param_lambda * (incomeCentersGroup[:, None] - transportCost) - minIncome) / np.nansum(np.exp(param_lambda * (incomeCentersGroup[:, None] - transportCost) - minIncome), 0)[None, :]
+                ODflows[whichCenters,:,j,index] = np.exp(param_lambda * (incomeCentersGroup[:, None] - transportCost) - minIncome) / np.nansum(np.exp(param_lambda * (incomeCentersGroup[:, None] - transportCost) - minIncome), 0)[None, :]
                 
                 #Income net of commuting (correct formula)
                 #incomeNetOfCommuting[j,:, index] = 1 /param_lambda * (np.log(np.nansum(np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome), 0)) + minIncome)
                 incomeNetOfCommuting[j,:, index] = 1/param_lambda * (np.log(np.nansum(np.exp(param_lambda * (incomeCentersGroup[:, None] - transportCost) - minIncome), 0)) + minIncome)
         
                 #Average income earned by a worker
-                #averageIncome[j,:, index] = np.nansum(ODflows[whichCenters,:,j,index] * incomeCentersGroup[:, None], 0)
+                averageIncome[j,:, index] = np.nansum(ODflows[whichCenters,:,j,index] * incomeCentersGroup[:, None], 0)
+
+        '''
+        whichCenters = incomeCenters > -100000
+        incomeCentersGroup = copy.deepcopy(incomeCenters)
+        incomeCentersGroup[incomeCentersGroup < - 100000] = - 100000
+        #incomeCentersGroup = incomeCenters
+           
+        #Transport costs and employment allocation (cout par heure)
+        transportCostModes = np.array(param["household_size"])[None, None, None, :, None] * (monetaryCost[:, :, :, None, :] + ((costTime[:, :, :, None] * incomeCentersGroup[:, None, None, :])[:, :, :, :, None]))
+        #&(185, 4, 24014, 5, 2)
+        #NEW(185, 24014, 5, 4, 2)
+        #Value max is to prevent the exp to diverge to infinity (in matlab: exp(800) = Inf)
+        valueMax = (np.min(param_lambda * transportCostModes, axis = 2) - 500) #-500
+        
+        #Modal shares
+        #modalShares[whichCenters,:,:,j,index] = np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2))  / np.repeat(np.nansum(np.exp(-param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2)), 2)[:, :, np.newaxis], 5, axis=2)
+        #modalShares[:,:,:,:,index] = np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, :, np.newaxis], 5, axis=3))  / np.repeat(np.nansum(np.exp(-param_lambda * transportCostModes + np.repeat(valueMax[:, :, :, np.newaxis], 5, axis=3)), 3)[:, :, :, np.newaxis], 5, axis=3)
+        #modalShares = np.exp(- param_lambda * transportCostModes + valueMax[:, :, None, :, :])  / np.nansum(np.exp(-param_lambda * transportCostModes + valueMax[:, :, None, :, :]), 2)[:, :, None, :, :]
+        
+        #
+        #Transport costs
+        #transportCost = - 1 /param_lambda * (np.log(np.nansum(np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2)), 2) - valueMax))
+        #transportCost = - 1 /param_lambda * (np.log(np.nansum(np.exp(- param_lambda * transportCostModes + np.repeat(valueMax[:, :, np.newaxis], 5, axis=2)), 2) - valueMax))
+        transportCost = - 1 /param_lambda * (np.log(np.nansum(np.exp(- param_lambda * transportCostModes + valueMax[:, :, None, :, :]), 2) - valueMax))
+        
+        #minIncome is also to prevent diverging exponentials
+        minIncome = np.nanmax(param_lambda * incomeCentersGroup[:, None, :, None] - transportCost) - 700
+            
+        #OD flows
+        #ODflows[whichCenters,:,j] = np.exp(param_lambda * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1)) - transportCost) - minIncome) / np.transpose(np.matlib.repmat(np.nansum(np.exp(param_lambda * (np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1)) - transportCost) - minIncome), 1), 24014, 1))
+        #ODflows[whichCenters,:,j, index] = np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome) / np.nansum(np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome), 0)
+        ODflows = np.exp(param_lambda * (incomeCentersGroup[:, None, :, None] - transportCost) - minIncome) / np.nansum(np.exp(param_lambda * (incomeCentersGroup[:, None, :, None] - transportCost) - minIncome), 0)[None, :, :, :]
+                
+        #Income net of commuting (correct formula)
+        #incomeNetOfCommuting[j,:, index] = 1 /param_lambda * (np.log(np.nansum(np.exp(param_lambda * ((np.transpose(np.matlib.repmat(incomeCentersGroup, 24014, 1))) - transportCost) - minIncome), 0)) + minIncome)
+        incomeNetOfCommuting = 1 /param_lambda * (np.log(np.nansum(np.exp(param_lambda * (incomeCentersGroup[:, None, :, None] - transportCost) - minIncome), 0)) + minIncome)
+    
+        #Average income earned by a worker
+        averageIncome = np.nansum(ODflows * incomeCentersGroup[:, None, :, None], 0)
+        '''
+
+
+
+
+
+
 
         incomeNetOfCommuting = incomeNetOfCommuting / annualToHourly
-        return incomeNetOfCommuting[:, :, 1] 
+        averageIncome = averageIncome / annualToHourly 
 
-        
+        self.distanceOutput = distanceOutput
+        self.monetaryCost = trans_monetaryCost
+        self.timeCost = costTime
+        self.incomeNetOfCommuting = incomeNetOfCommuting
+        self.modalShares = modalShares
+        self.ODflows = ODflows
+        self.averageIncome = averageIncome
+        self.yearTransport = yearTraffic + param["baseline_year"]
+        self.timeOutput = timeOutput 
