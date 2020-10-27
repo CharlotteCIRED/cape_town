@@ -77,14 +77,13 @@ class FloodData:
         damages_contents9 = (d['FD_500yr'].prop_flood_prone * content_damages(d['FD_500yr'].flood_depth)) + (d['FD_1000yr'].prop_flood_prone * content_damages(d['FD_1000yr'].flood_depth))
         damages_contents10 = (d['FD_1000yr'].prop_flood_prone * content_damages(d['FD_1000yr'].flood_depth)) + (d['FD_1000yr'].prop_flood_prone * content_damages(d['FD_1000yr'].flood_depth))
         
-
         d_structure = 0.5 * ((interval0 * damages0) + (interval1 * damages1) + (interval2 * damages2) + (interval3 * damages3) + (interval4 * damages4) + (interval5 * damages5) + (interval6 * damages6) + (interval7 * damages7) + (interval8 * damages8) + (interval9 * damages9) + (interval10 * damages10))
         d_contents = 0.5 * ((interval0 * damages_contents0) + (interval1 * damages_contents1) + (interval2 * damages_contents2) + (interval3 * damages_contents3) + (interval4 * damages_contents4) + (interval5 * damages_contents5) + (interval6 * damages_contents6) + (interval7 * damages_contents7) + (interval8 * damages_contents8) + (interval9 * damages_contents9) + (interval10 * damages_contents10))
         
-        content_cost = 7395
         informal_structure_value = 4000
         
         self.d_structure = d_structure
         self.d_contents = d_contents
-        self.content_cost = content_cost
         self.informal_structure_value = informal_structure_value
+        self.structural_damages = structural_damages
+        self.content_damages = content_damages

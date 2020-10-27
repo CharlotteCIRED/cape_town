@@ -66,11 +66,8 @@ class MacroData:
 
         RDP_2011 = min(2.2666e+05, sum(income_2011.formal[param["income_distribution"] == 1])) #(estimated as sum(data.gridFormal(data.countRDPfromGV > 0)))    % RDP_2011 = 320969; %227409; % Where from?
         RDP_2001 = min(1.1718e+05, sum(income_2011.Households_nb_2001[param["income_distribution"] == 1])) #(estimated as sum(data.gridFormal(data.countRDPfromGV > 0)))  % 262452; % Estimated by nb inc_1 - BY - settlement in 2001
-        if option["future_construction_RDP"] == 1:
-            splineRDP = interp1d([2001 - param["baseline_year"], 2011 - param["baseline_year"], 2018 -  param["baseline_year"], 2041 - param["baseline_year"]], [RDP_2001, RDP_2011, RDP_2011 + 7*5000, RDP_2011 + 7*5000 + 23 * param["futureRatePublicHousing"]], method)
-        else: 
-            splineRDP = interp1d([2001 - param["baseline_year"], 2011 - param["baseline_year"], 2018 - param["baseline_year"], 2041 - param["baseline_year"]], [RDP_2001, RDP_2011, RDP_2011 + 7*5000, RDP_2011 + 7*5000], method)
-
+        splineRDP = interp1d([2001 - param["baseline_year"], 2011 - param["baseline_year"], 2018 -  param["baseline_year"], 2041 - param["baseline_year"]], [RDP_2001, RDP_2011, RDP_2011 + 7*5000, RDP_2011 + 7*5000 + 23 * param["futureRatePublicHousing"]], method)
+        
         # 4. Import evolution of agricultural land
 
         agriculturalRent2040 = param["agriculturalRent2011"] * spline_inflation(2040 - param["baseline_year"]) / spline_inflation(2011 - param["baseline_year"])

@@ -15,7 +15,7 @@ def grid_map(x, grid):
                       #cmap = 'Reds',
                       marker='.')
     plt.colorbar(map)
-    #plt.clim(-100, 100)
+    plt.clim(100000, 1000000)
     plt.axis('off')
     plt.show()
 

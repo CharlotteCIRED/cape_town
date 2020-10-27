@@ -19,7 +19,7 @@ import os
 from parameters_and_options.parameters import *
 from parameters_and_options.options import *
 from data.data import *
-from data.grille import *
+from data.grid import *
 from data.job import *
 from data.land import *
 from data.macro_data import *
@@ -37,21 +37,15 @@ print("\n*** NEDUM-Cape-Town - Polycentric Version - Formal and Informal housing
 print("\n*** Load parameters and options ***\n")
 
 option = choice_options()
-
-option["households_anticipate_floods"] = 0
 option["import_precalculated_parameters"] = 1
 option["load_households_data"] = 0
-
-#Floods
-option["floods"] = 0
-option["calibration_with_floods"] = 0
-option["calibration_BIB_BIS_floods"] = 0
-
+option["floods"] = 1
+option["incur_formal_structure_damages"] = 'developers'
 param = choice_param(option)
 
 t = np.arange(0, 30) #Years of the scenario
 
-name = "12102020_without_floods"
+name = "22102020_floods"
 
 # %% Import data for the simulation
 
@@ -81,14 +75,6 @@ land_UE.import_land_use(grid, option, param, households_data, macro_data)
 #Add construction parameters
 param = add_construction_parameters(param, households_data, land_UE, grid)
 
-#Transport data
-#yearTraffic = np.arange(0, 29, 2)
-#trans = TransportData()
-#trans.import_transport_data(option, grid, macro_data, param, job, households_data, yearTraffic, 1)
-#with open('C:/Users/Charlotte Liotta/Desktop/cape_town/3. Code/data/import_transport', 'rb') as config_dictionary_file:
-    # Step 3
-#    trans = pickle.load(config_dictionary_file)
-
 #Floods data
 flood = FloodData()
 flood.import_floods_data()
@@ -97,20 +83,52 @@ flood.import_floods_data()
 
 print('*** Initial state ***')
 
-if option["ownInitializationSolver"] == 1:
-    mat = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedUtilities.mat')
-    Uo_init = [500, 10000, float(mat["utilitiesCorrected"][[0]]), float(mat["utilitiesCorrected"][1])]
-else:
-    Uo_init = 10000
+Uo_init = np.array([1678, 3578, 16433, 76514])
 
-initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation = RunEquilibriumSolverNEDUM_LOGIT(t[0], option, land_UE, grid, macro_data, param, job, Uo_init, flood)
+initialState_error, initialState_simulatedJobs, initialState_householdsHousingType, initialState_householdsCenter, initialState_households, initialState_dwellingSize, initialState_housingSupply, initialState_rent, initialState_rentMatrix, initialState_capitalLand, initialState_incomeMatrix, initialState_limitCity, initialState_utility, initialState_impossiblePopulation, initialState_contentCost = RunEquilibriumSolverNEDUM_LOGIT(t[0], option, land_UE, grid, macro_data, param, job, Uo_init, flood)
 
 # %% Compute differences between our initial state, Basile's, and the data
 
 export_density_rents_sizes(grid, name + "_initialState", households_data, initialState_householdsHousingType, initialState_dwellingSize, initialState_rent)
-export_utility_and_error(initialState_error, initialState_utility, name + "_initialState")
-export_outputs_flood_damages(households_data, grid, name + "_initialState", initialState_householdsCenter, initialState_householdsHousingType, param, initialState_dwellingSize, initialState_rent)
+export_utility_and_error(initialState_error, initialState_utility, initialState_householdsHousingType, name + "_initialState")
+export_outputs_flood_damages(households_data, grid, name + "_initialState", initialState_householdsCenter, initialState_householdsHousingType, param, initialState_dwellingSize, initialState_rent, param["interest_rate"] + param["depreciation_rate"], initialState_contentCost)
     
+
+
+
+
+
+formal_s1 = simul1_householdsHousingType[0, 0, :]
+backyard_s1 = simul1_householdsHousingType[0, 1, :]
+informal_s1 = simul1_householdsHousingType[0, 2, :]
+subsidized_s1 = simul1_householdsHousingType[0, 3, :]
+
+#formal_s2 = simul2_householdsHousingType[0, 0, :]
+#backyard_s2 = simul2_householdsHousingType[0, 1, :]
+#informal_s2 = simul2_householdsHousingType[0, 2, :]
+#subsidized_s2 = simul2_householdsHousingType[0, 3, :]
+
+formal_me = initialState_householdsHousingType[0, :]
+backyard_me = initialState_householdsHousingType[1, :]
+informal_me = initialState_householdsHousingType[2, :]
+subsidized_me = initialState_householdsHousingType[3, :]
+
+#count_formal = households_data.formal_grid_2011 - households_data.GV_count_RDP
+#count_formal[count_formal < 0] = 0
+count_formal, households_data.GV_count_RDP, households_data.informal_grid_2011, households_data.backyard_grid_2011
+
+
+var = informal_me
+sns.distplot(var[var > 200], hist=True, kde=True, 
+             bins=int(180/5), color = 'darkblue', 
+             hist_kws={'edgecolor':'black'}, 
+             kde_kws={'linewidth': 4})
+np.nanquantile(var[var > 200], 0.99)
+np.nanquantile(var[var > 0], 0.9999)
+np.nanmax(var)
+
+
+"""
 # %% Scenarios
 
 option["urban_edge"] = 0
@@ -287,4 +305,4 @@ trees_shp.field("HEIGHT", "C")
 trees_shp.field("SPREAD", "C")
 trees_shp.field("TRUNK", "C")
 trees_shp.field("TRUNK_ACTL", "C")
-trees_shp.field("CONDITION", "C")
+trees_shp.field("CONDITION", "C") """

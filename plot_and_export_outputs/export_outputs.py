@@ -18,7 +18,7 @@ import os
 
 from data.functions_to_import_data import *
 from plot_and_export_outputs.export_outputs import *
-from data.grille import *
+from data.grid import *
 
 #### EXPORT MAPS ###
 
@@ -170,7 +170,7 @@ def export_map(value, grid, export_name, lim):
     plt.savefig(export_name)
     plt.close()
     
-def export_utility_and_error(initialState_error, initialState_utility, name):
+def export_utility_and_error(initialState_error, initialState_utility, initialState_householdsHousingType, name):
     mat1 = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/simulations scenarios - 201908.mat')
     mat2 = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/simulations - 201907.mat')
     simul1 = mat1["simulation_noUE"]
@@ -181,4 +181,7 @@ def export_utility_and_error(initialState_error, initialState_utility, name):
     simul1_utility = simul1["utility"][0][0]
     simul2_utility = simul2["utility"][0][0]
     pd.DataFrame([initialState_utility, np.transpose(simul1_utility[0]), np.transpose(simul2_utility[0])]).to_excel('C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/' + name + '/utility.xlsx')
-
+    
+    simul1_householdsHousingType = simul1["householdsHousingType"][0][0]
+    simul2_householdsHousingType = simul2["householdsHousingType"][0][0]
+    pd.DataFrame([np.nansum(initialState_householdsHousingType, 1), np.nansum(simul2_householdsHousingType[0, :, :], 1), np.nansum(simul2_householdsHousingType[0, :, :], 1)]).to_excel('C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/' + name + '/hh_per_housing_type.xlsx')

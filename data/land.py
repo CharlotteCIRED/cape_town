@@ -99,8 +99,6 @@ class Land:
         outsideRegulation = (grid.dist > param["historicRadius"])
         housingLimit = param["limitHeightCenter"] * 1000000 * centerRegulation + param["limitHeightOut"] * 1000000 * outsideRegulation 
 
-
-
         self.urban = urban #Prop. urbanized
         self.informal = informal #Prop of the area occupied by informal dwellings
         self.coeff_land_urban_edge = coeff_land_urban_edge

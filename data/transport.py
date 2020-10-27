@@ -176,5 +176,96 @@ def import_transport_data(option, grid, macro_data, param, job, households_data,
 
         incomeNetOfCommuting = incomeNetOfCommuting / annualToHourly
         return incomeNetOfCommuting[:, :, 1] 
+    
+computeDistributionCommutingDistances(incomeCenters, popCenters, popResidence, monetaryCost, timeCost, transportDistance, bracketsDistance, param_lambda)
+    
+def import_transport_costs(option, grid, macro_data, param, job, households_data, yearTraffic, extrapolate):
+        """ Compute travel times and costs """
+
+        #### STEP 1: IMPORT TRAVEL TIMES AND COSTS
+
+        # Import travel times and distances
+        transport_times = scipy.io.loadmat('./2. Data/Basile data/Transport_times_GRID.mat')
+
+        #Price per km
+        priceTrainPerKMMonth = 0.164 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
+        priceTrainFixedMonth = 4.48 * 40 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
+        priceTaxiPerKMMonth = 0.785 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
+        priceTaxiFixedMonth = 4.32 * 40 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
+        priceBusPerKMMonth = 0.522 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
+        priceBusFixedMonth = 6.24 * 40 * macro_data.inflation(2011 - param["baseline_year"]) / macro_data.inflation(2013 - param["baseline_year"])
+        inflation = macro_data.inflation(yearTraffic)
+        infla_2012 = macro_data.inflation(2012 - param["baseline_year"])
+        priceTrainPerKMMonth = priceTrainPerKMMonth * inflation / infla_2012
+        priceTrainFixedMonth = priceTrainFixedMonth * inflation / infla_2012
+        priceTaxiPerKMMonth = priceTaxiPerKMMonth * inflation / infla_2012
+        priceTaxiFixedMonth = priceTaxiFixedMonth * inflation / infla_2012
+        priceBusPerKMMonth = priceBusPerKMMonth * inflation / infla_2012
+        priceBusFixedMonth = priceBusFixedMonth * inflation / infla_2012
+        priceFuelPerKMMonth = macro_data.fuel_cost(yearTraffic)
+        
+        #Fixed costs
+        priceFixedVehiculeMonth = 400 
+        priceFixedVehiculeMonth = priceFixedVehiculeMonth * inflation / infla_2012
+        
+        #### STEP 2: TRAVEL TIMES AND COSTS AS MATRIX
+        
+        #parameters
+        numberDaysPerYear = 235
+        numberHourWorkedPerDay= 8
+        
+        #Time by each mode, aller-retour, en minute
+        timeOutput = np.empty((transport_times["durationTrain"].shape[0], transport_times["durationTrain"].shape[1], 5))
+        timeOutput[:,:,0] = transport_times["distanceCar"] / param["walking_speed"] * 60 * 1.2 * 2
+        timeOutput[:,:,0][np.isnan(transport_times["durationCar"])] = np.nan
+        timeOutput[:,:,1] = copy.deepcopy(transport_times["durationTrain"])
+        timeOutput[:,:,2] = copy.deepcopy(transport_times["durationCar"])
+        timeOutput[:,:,3] = copy.deepcopy(transport_times["durationMinibus"])
+        timeOutput[:,:,4] = copy.deepcopy(transport_times["durationBus"])
+
+        #Length (km) using each mode
+        multiplierPrice = np.empty((timeOutput.shape))
+        multiplierPrice[:,:,0] = np.zeros((timeOutput[:,:,0].shape))
+        multiplierPrice[:,:,1] = transport_times["distanceCar"]
+        multiplierPrice[:,:,2] = transport_times["distanceCar"]
+        multiplierPrice[:,:,3] = transport_times["distanceCar"]
+        multiplierPrice[:,:,4] = transport_times["distanceCar"]
+
+        #Multiplying by 235 (days per year)
+        pricePerKM = np.empty((len(priceFuelPerKMMonth), 5))
+        pricePerKM[:, 0] = np.zeros(len(priceFuelPerKMMonth))
+        pricePerKM[:, 1] = priceTrainPerKMMonth*numberDaysPerYear
+        pricePerKM[:, 2] = priceFuelPerKMMonth*numberDaysPerYear          
+        pricePerKM[:, 3] = priceTaxiPerKMMonth*numberDaysPerYear
+        pricePerKM[:, 4] = priceBusPerKMMonth*numberDaysPerYear
+        
+        #Distances (not useful to calculate price but useful output)
+        distanceOutput = np.empty((timeOutput.shape))
+        distanceOutput[:,:,0] = transport_times["distanceCar"]
+        distanceOutput[:,:,1] = transport_times["distanceCar"]
+        distanceOutput[:,:,2] = transport_times["distanceCar"]
+        distanceOutput[:,:,3] = transport_times["distanceCar"]
+        distanceOutput[:,:,4] = transport_times["distanceCar"]
+
+        #Monetary price per year
+        monetaryCost = np.zeros((len(job.codeCentersPolycentric), timeOutput.shape[1], 5))
+        trans_monetaryCost = np.zeros((len(job.codeCentersPolycentric), timeOutput.shape[1], 5, len(yearTraffic)))
+        for index in range(0, len(yearTraffic)):    
+            for index2 in range(0, 5):
+                monetaryCost[:,:,index2] = pricePerKM[index,index2] * multiplierPrice[:,:,index2]
+                monetaryCost[:,:,1] = monetaryCost[:,:,1] + priceTrainFixedMonth[index] * 12 #train (monthly fare)
+                monetaryCost[:,:,2] = monetaryCost[:,:,2] + priceFixedVehiculeMonth[index] * 12 #private car
+                monetaryCost[:,:,3] = monetaryCost[:,:,3] + priceTaxiFixedMonth[index] * 12 #minibus-taxi
+                monetaryCost[:,:,4] = monetaryCost[:,:,4] + priceBusFixedMonth[index] * 12 #bus
+            trans_monetaryCost[:,:,:,index] = copy.deepcopy(monetaryCost)
+
+        #### STEP 3: COMPUTE PROBA TO WORK IN C, EXPECTED INCOME AND EXPECTED NB OF
+        #RESIDENTS OF INCOME GROUP I WORKING IN C
+
+
+        costTime = (timeOutput * param["timeCost"]) / (60 * numberHourWorkedPerDay) #en h de transport par h de travail
+        costTime[np.isnan(costTime)] = 10 ** 2
+
+        return timeOutput, distanceOutput, monetaryCost, costTime
 
         

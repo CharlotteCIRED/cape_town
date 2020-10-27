@@ -15,17 +15,16 @@ def choice_param(option):
     
     #Parameters of the utility fonction
     if option["import_precalculated_parameters"] == 1:
-        if option["households_anticipate_floods"] == 0:
-            param["beta"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedUtility_beta.mat')["calibratedUtility_beta"].squeeze()
-            param["q0"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedUtility_q0.mat')["calibratedUtility_q0"].squeeze()
-    param["alpha"] = 1 - param["beta"]
+        param["beta"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedUtility_beta.mat')["calibratedUtility_beta"].squeeze()
+        #param["q0"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedUtility_q0.mat')["calibratedUtility_q0"].squeeze()
+        param["q0"] = 0
+        param["alpha"] = 1 - param["beta"]
     
     #Parameters of the housing production fonction
     if option["import_precalculated_parameters"] == 1:
-        if option["households_anticipate_floods"] == 0:
-            param["coeff_b"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedHousing_b.mat')["coeff_b"].squeeze()
-            param["coeff_A"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedHousing_kappa.mat')["coeffKappa"].squeeze()
-    param["coeff_a"] = 1 - param["coeff_b"]
+        param["coeff_b"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedHousing_b.mat')["coeff_b"].squeeze()
+        param["coeff_A"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedHousing_kappa.mat')["coeffKappa"].squeeze()
+        param["coeff_a"] = 1 - param["coeff_b"]
     param["depreciation_rate"] = 0.025
     param["interest_rate"] = 0.025    
     
@@ -34,7 +33,7 @@ def choice_param(option):
     param["max_land_use_backyard"] = 0.45
     param["max_land_use_settlement"] = 0.4
     param["minDensityUrban"] = 30000
-    param["limitPeopleCityEdge"] = 40
+    #param["limitPeopleCityEdge"] = 40
     param["historicRadius"] = 100
     param["limitHeightCenter"] = 10 #very high => as if there were no limit
     param["limitHeightOut"] = 10
@@ -42,11 +41,10 @@ def choice_param(option):
     param["RDP_size"] = 40 #Size of a RDP house (m2)
     param["backyard_size"] = 70 #size of the backyard of a RDP house (m2)
     if option["import_precalculated_parameters"] == 1:
-        if option["households_anticipate_floods"] == 0:
-            param["amenity_backyard"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedParamAmenities.mat')["calibratedParamAmenities"][0].squeeze()
-            param["amenity_settlement"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedParamAmenities.mat')["calibratedParamAmenities"][1].squeeze()
-    param["double_storey_shacks"] = 0
-    param["coeffDoubleStorey"] = 0.02 #Random for now
+        param["amenity_backyard"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedParamAmenities.mat')["calibratedParamAmenities"][0].squeeze()
+        param["amenity_settlement"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/calibratedParamAmenities.mat')["calibratedParamAmenities"][1].squeeze()
+    #param["double_storey_shacks"] = 0
+    #param["coeffDoubleStorey"] = 0.02 #Random for now
 
     #Multiple income classes
     param["nb_of_income_classes"] = 4
@@ -61,10 +59,9 @@ def choice_param(option):
     param["timeCost"] = 1
     param["timeCost2"] = 1
     if option["import_precalculated_parameters"] == 1:
-        if option["households_anticipate_floods"] == 0:
-            param["lambda"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/lambda.mat')["lambdaKeep"].squeeze()
-    param["logitFactorMin"] = 6
-    param["logitFactor"] = 3
+        param["lambda"] = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/0. Precalculated inputs/lambda.mat')["lambdaKeep"].squeeze()
+    #param["logitFactorMin"] = 6
+    #param["logitFactor"] = 3
     
     #Agricultural rent
     param["agriculturalRent2011"] = 807.2
@@ -83,9 +80,6 @@ def choice_param(option):
     param["taxOutUrbanEdge"] = 10000
     param["future_backyard_size"] = param["backyard_size"]
     param["futureRatePublicHousing"] = 5000
-    
-    #param["timeLimit"] = 20.2000
-    #param["meanSlopeSmooth"] = 3
 
     return param
 

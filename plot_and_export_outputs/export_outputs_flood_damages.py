@@ -17,30 +17,43 @@ import pickle
 import os
 
 from data.functions_to_import_data import *
-from data.grille import *
+from data.grid import *
+from data.flood import *
 from plot_and_export_outputs.export_outputs_flood_damages import *
 
 ### COMPUTE OUTPUT ON FLOOD AND DAMAGES
 
-def export_outputs_flood_damages(households_data, grid, name, initialState_householdsCenter, initialState_householdsHousingType, param, initialState_dwellingSize, initialState_rent):
+def export_outputs_flood_damages(households_data, grid, name, initialState_householdsCenter, initialState_householdsHousingType, param, initialState_dwellingSize, initialState_rent, interest_rate, content_cost):
     
     os.mkdir('C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/' + name + '/flood_damages')
-            
+
+    #Flood data
     floods = ['FD_5yr', 'FD_10yr', 'FD_20yr', 'FD_50yr', 'FD_75yr', 'FD_100yr', 'FD_200yr', 'FD_250yr', 'FD_500yr', 'FD_1000yr']
     path_data = "C:/Users/Charlotte Liotta/Desktop/cape_town/2. Data/FATHOM/"
+    flood = FloodData()
+    flood.import_floods_data()
     
+    #Data
+    grid = SimulGrid()
+    grid.create_grid()
     count_formal = households_data.formal_grid_2011 - households_data.GV_count_RDP
     count_formal[count_formal < 0] = 0
     
+    #Basile's simulations
     mat1 = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/simulations scenarios - 201908.mat')
     mat2 = scipy.io.loadmat('C:/Users/Charlotte Liotta/Desktop/Cape Town - pour Charlotte/Modèle/projet_le_cap/simulations - 201907.mat')
     simul1 = mat1["simulation_noUE"]
     simul2 = mat2["simulation_noUE"]
-
     simul1_householdsHousingType = simul1["householdsHousingType"][0][0]
     simul2_householdsHousingType = simul2["householdsHousingType"][0][0]
     simul1_householdsCenter = simul1["householdsCenter"][0][0]
     simul2_householdsCenter = simul2["householdsCenter"][0][0]
+    simul1_housingSupply = simul1["housingSupply"][0][0]
+    simul2_housingSupply = simul2["housingSupply"][0][0]
+    simul1_rent = simul1["rent"][0][0]
+    simul2_rent = simul2["rent"][0][0]
+    simul1_dwellingSize = simul1["dwellingSize"][0][0]
+    simul2_dwellingSize = simul2["dwellingSize"][0][0]
 
     #1. Compute stats on floods per housing type
     
@@ -64,8 +77,11 @@ def export_outputs_flood_damages(households_data, grid, name, initialState_house
 
     #2. Compute stats on floods per income classes
     
+    #Floods data
+    
     os.mkdir('C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/' + name + '/flood_damages/stats_per_income_class')
 
+    #Income classes data
     grid_intersect = pd.read_csv('./2. Data/Basile data/grid_SP_intersect.csv', sep = ';')  
     income_class_grid = np.zeros((len(grid.dist), 4))  
     for index in range(0, len(grid.dist)): 
@@ -93,45 +109,35 @@ def export_outputs_flood_damages(households_data, grid, name, initialState_house
     #3. Damages
     
     os.mkdir('C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/' + name + '/flood_damages/estimation_damages')
-
-    #Hypotheses
-    structural_damages_small_houses = interp1d([0, 0.1, 0.6, 1.2, 2.4, 6, 10], [0, 0.0479, 0.1312, 0.1795, 0.3591, 1, 1])
-    structural_damages_medium_houses = interp1d([0, 0.1, 0.6, 1.2, 2.4, 6, 10], [0, 0.083, 0.2273, 0.3083, 0.62, 1, 1])
-    structural_damages_large_houses = interp1d([0, 0.1, 0.6, 1.2, 2.4, 6, 10], [0, 0.0799, 0.2198, 0.2997, 0.5994, 1, 1])
-    content_damages = interp1d([0, 0.1, 0.3, 0.6, 1.2, 1.5, 2.4, 10], [0, 0.06, 0.15, 0.35, 0.77, 0.95, 1, 1])
-
-    informal_structure_cost = 4000
-    backyard_structure_cost = 4000
-    subsidized_structure_cost = 0 
-
-    content_cost = 7395
-    
-    simul1_rent = simul1["rent"][0][0]
-    simul2_rent = simul2["rent"][0][0]
-    simul1_dwellingSize = simul1["dwellingSize"][0][0]
-    simul2_dwellingSize = simul2["dwellingSize"][0][0]
     
     #Data
     grid = SimulGrid()
     grid.create_grid()
-    dwelling_size = SP_to_grid_2011_1(households_data.spDwellingSize, households_data.Code_SP_2011, grid)
-    formal_structure_cost = ((param["coeff_A"] * param["coeff_b"] * simul1_rent[0, 0, :] /  (param["interest_rate"] + param["depreciation_rate"])) ** (1/param["coeff_a"])) * dwelling_size # Between R 300 000 and R 700 000.
-    damages = compute_damages(floods, path_data, count_formal, households_data.GV_count_RDP, households_data.informal_grid_2011, households_data.backyard_grid_2011, formal_structure_cost, 0, informal_structure_cost, backyard_structure_cost, content_cost, structural_damages_medium_houses, content_damages)
+    priceSimul = SP_to_grid_2011_1(households_data.sale_price_SP[2,:], households_data.Code_SP_2011, grid)
+    formal_structure_cost  = priceSimul * (250000)  * land_UE.coeff_land[0, :] / count_formal
+    formal_structure_cost[np.isinf(formal_structure_cost)] = np.empty(1)
+    damages = compute_damages(floods, path_data, count_formal, households_data.GV_count_RDP, households_data.informal_grid_2011, households_data.backyard_grid_2011, formal_structure_cost, content_cost, flood)
     damages.to_excel("C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/" + name + '/flood_damages/estimation_damages/data.xlsx')
 
     #Simul
-    formal_structure_cost = ((param["coeff_A"] * param["coeff_b"] * initialState_rent[0, :] /  (param["interest_rate"] + param["depreciation_rate"])) ** (1/param["coeff_a"])) * initialState_dwellingSize[0, :] # Between R 300 000 and R 700 000.
-    damages = compute_damages(floods, path_data, initialState_householdsHousingType[0, :], initialState_householdsHousingType[3, :], initialState_householdsHousingType[2, :], initialState_householdsHousingType[1, :], formal_structure_cost, 0, informal_structure_cost, backyard_structure_cost, content_cost, structural_damages_medium_houses, content_damages)
+    priceSimul = (initialState_rent[0, :] * param["coeff_A"] * param["coeff_b"]/ (interest_rate)) ** (1/param["coeff_a"])
+    formal_structure_cost  = priceSimul * (250000)  * land_UE.coeff_land[0, :] / initialState_householdsHousingType[0, :]
+    formal_structure_cost[np.isinf(formal_structure_cost)] = np.empty(1)
+    damages = compute_damages(floods, path_data, initialState_householdsHousingType[0, :], initialState_householdsHousingType[3, :], initialState_householdsHousingType[2, :], initialState_householdsHousingType[1, :], formal_structure_cost, content_cost, flood)
     damages.to_excel("C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/" + name + '/flood_damages/estimation_damages/simul.xlsx')
 
     #Basile1
-    formal_structure_cost = ((param["coeff_A"] * param["coeff_b"] * simul1_rent[0, 0, :] /  (param["interest_rate"] + param["depreciation_rate"])) ** (1/param["coeff_a"])) * simul1_dwellingSize[0, 0, :]
-    damages = compute_damages(floods, path_data, simul1_householdsHousingType[0, 0, :], simul1_householdsHousingType[0, 3, :], simul1_householdsHousingType[0, 2, :], simul1_householdsHousingType[0, 1, :], formal_structure_cost, 0, informal_structure_cost, backyard_structure_cost, content_cost, structural_damages_medium_houses, content_damages)
+    priceSimul = (simul1_rent[0, 0, :] * param["coeff_A"] * param["coeff_b"]/ (interest_rate)) ** (1/param["coeff_a"])
+    formal_structure_cost  = priceSimul * (250000)  * land_UE.coeff_land[0, :] / simul1_householdsHousingType[0, 0, :]
+    formal_structure_cost[np.isinf(formal_structure_cost)] = np.empty(1)
+    damages = compute_damages(floods, path_data, simul1_householdsHousingType[0, 0, :], simul1_householdsHousingType[0, 3, :], simul1_householdsHousingType[0, 2, :], simul1_householdsHousingType[0, 1, :], formal_structure_cost, content_cost, flood)
     damages.to_excel("C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/" + name + '/flood_damages/estimation_damages/basile1.xlsx')
 
     #Basile2
-    formal_structure_cost = ((param["coeff_A"] * param["coeff_b"] * simul2_rent[0, 0, :] /  (param["interest_rate"] + param["depreciation_rate"])) ** (1/param["coeff_a"])) * simul2_dwellingSize[0, 0, :]
-    damages = compute_damages(floods, path_data, simul2_householdsHousingType[0, 0, :], simul2_householdsHousingType[0, 3, :], simul2_householdsHousingType[0, 2, :], simul2_householdsHousingType[0, 1, :], formal_structure_cost, 0, informal_structure_cost, backyard_structure_cost, content_cost, structural_damages_medium_houses, content_damages)
+    priceSimul = (simul2_rent[0, 0, :] * param["coeff_A"] * param["coeff_b"]/ (interest_rate)) ** (1/param["coeff_a"])
+    formal_structure_cost  = priceSimul * (250000)  * land_UE.coeff_land[0, :] / simul2_householdsHousingType[0, 0, :]
+    formal_structure_cost[np.isinf(formal_structure_cost)] = np.empty(1)
+    damages = compute_damages(floods, path_data, simul2_householdsHousingType[0, 0, :], simul2_householdsHousingType[0, 3, :], simul2_householdsHousingType[0, 2, :], simul2_householdsHousingType[0, 1, :], formal_structure_cost, content_cost, flood)
     damages.to_excel("C:/Users/Charlotte Liotta/Desktop/cape_town/4. Sorties/" + name + '/flood_damages/estimation_damages/basile2.xlsx')
 
     #4. Maps
@@ -409,9 +415,8 @@ def compute_stats_per_income_class(floods, path_data, income_class_grid):
 
 def compute_damages(floods, path_data,
                     nb_households_formal, nb_households_subsidized, nb_households_informal, nb_households_backyard,
-                    formal_structure_cost, subsidized_structure_cost, informal_structure_cost, backyard_structure_cost,
-                    content_cost,
-                    structural_damages, content_damages):
+                    formal_structure_cost,
+                    content_cost, flood):
     
     damages = pd.DataFrame(columns = ['flood',
                                       'formal_structure_damages',
@@ -422,17 +427,17 @@ def compute_damages(floods, path_data,
                                       'subsidized_content_damages',
                                       'informal_content_damages',
                                       'backyard_content_damages'])
-    for flood in floods:
-        type_flood = copy.deepcopy(flood)
-        flood = np.squeeze(pd.read_excel(path_data + flood + ".xlsx"))
-        formal_structure_damages = sum(nb_households_formal * flood["prop_flood_prone"] * formal_structure_cost * structural_damages(flood['flood_depth']))
-        subsidized_structure_damages = sum(nb_households_subsidized * flood["prop_flood_prone"] * subsidized_structure_cost * structural_damages(flood['flood_depth']))
-        informal_structure_damages = sum(nb_households_informal * flood["prop_flood_prone"] * informal_structure_cost * structural_damages(flood['flood_depth']))
-        backyard_structure_damages = sum(nb_households_backyard * flood["prop_flood_prone"] * backyard_structure_cost * structural_damages(flood['flood_depth']))
-        formal_content_damages = sum(nb_households_formal * flood["prop_flood_prone"] * content_cost * content_damages(flood['flood_depth']))
-        subsidized_content_damages = sum(nb_households_subsidized * flood["prop_flood_prone"] * content_cost * content_damages(flood['flood_depth']))
-        informal_content_damages = sum(nb_households_informal * flood["prop_flood_prone"] * content_cost * content_damages(flood['flood_depth']))
-        backyard_content_damages = sum(nb_households_backyard * flood["prop_flood_prone"] * content_cost * content_damages(flood['flood_depth']))
+    for item in floods:
+        type_flood = copy.deepcopy(item)
+        data_flood = np.squeeze(pd.read_excel(path_data + item + ".xlsx"))
+        formal_structure_damages = np.nansum(nb_households_formal * data_flood["prop_flood_prone"] * formal_structure_cost * flood.structural_damages(data_flood['flood_depth']))
+        subsidized_structure_damages = 0
+        informal_structure_damages = np.nansum(nb_households_informal * data_flood["prop_flood_prone"] * flood.informal_structure_value * flood.structural_damages(data_flood['flood_depth']))
+        backyard_structure_damages = np.nansum(nb_households_backyard * data_flood["prop_flood_prone"] * flood.informal_structure_value * flood.structural_damages(data_flood['flood_depth']))
+        formal_content_damages = np.nansum(nb_households_formal * data_flood["prop_flood_prone"] * content_cost[0, :] * flood.content_damages(data_flood['flood_depth']))
+        subsidized_content_damages = np.nansum(nb_households_subsidized * data_flood["prop_flood_prone"] * content_cost[3, :] * flood.content_damages(data_flood['flood_depth']))
+        informal_content_damages = np.nansum(nb_households_informal * data_flood["prop_flood_prone"] * content_cost[2, :] * flood.content_damages(data_flood['flood_depth']))
+        backyard_content_damages = np.nansum(nb_households_backyard * data_flood["prop_flood_prone"] * content_cost[1, :] * flood.content_damages(data_flood['flood_depth']))
         damages = damages.append({'flood': type_flood,
                                   'formal_structure_damages': formal_structure_damages,
                                   'subsidized_structure_damages': subsidized_structure_damages,
